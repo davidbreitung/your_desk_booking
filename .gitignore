@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.test-deps/
+.sync-meta/
+desk-booking/backups/
+desk-booking/dist/
+*.log
+secrets.yaml
+*.original.yaml
+*.vor-*.yaml
+*live-registry*.json
+*resource-snapshot*.json
+*live*.jpg
+*live*.png

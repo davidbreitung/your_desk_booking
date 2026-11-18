@@ -1,6 +1,6 @@
 # Anforderungen – Your Desk Booking
 
-Stand: 2026-11-17. Diese Datei dokumentiert besprochene Ziele, **nicht** bestätigte Implementierungen.
+Planungsbasis: 2026-11-17. Abgleich mit bestehender Implementierung: 2026-11-18. Diese Datei dokumentiert besprochene Ziele, **nicht** bestätigte Implementierungen.
 
 ## Systemführerschaft
 - Microsoft Places soll führend für Mitarbeiter, Arbeitsplätze, Reservierungen und Check-in-Informationen sein.
@@ -53,3 +53,20 @@ Stand: 2026-11-17. Diese Datei dokumentiert besprochene Ziele, **nicht** bestät
 - Geräte-, NFC- und Türcontroller-Sicherheitsarchitektur.
 - Genauer Hardwaretyp, Pinbelegung, Stromversorgung und Displaytreiber.
 - Datenschutzfreigaben für Präsenz- und Kalenderanzeige.
+
+
+## Abgleich mit dem importierten Stand 0.15.2
+
+Die obigen Anforderungen bleiben als Zielbild erhalten. Der Import ersetzt keine offenen Aufgaben durch Erledigt-Markierungen.
+
+| Bereich | Vorhandener Stand | Weiterhin offen |
+| --- | --- | --- |
+| M365 / Places | App-Authentifizierung, Benutzer-/Gruppen-Delta, direkte und verschachtelte Mitgliedschaften, getrennte Schreibtische/Räume, Mailadressen, Kalendercache und manuelle/periodische Syncs | Neue API-/Lizenzprüfung für weitere Schreibabläufe |
+| Check-in | Lokaler HA-Check-in, 60-Minuten-Schutz, Nichtanreise-Freigabe, Endwarnung und tägliches Auschecken | Places-Check-in-Rückmeldung, Ad-hoc-Buchung in Microsoft, Werktagsende und 15-Minuten-Dauerwahl |
+| Display | Projektspezifische ESPHome-Firmware, Drehrad/Touch, Statusfarben, Höhen/Favoriten, Lichter, Cover, Schaltkanal, Nachrichten und Standby | Hardwareübertragbarkeit, NFC-Leser, DESFire/AES und Türcontroller |
+| Dashboards | Raumplan mit Drag-and-drop, Fotos, Tagesplanung, Reservierungslink und Bearbeitungskennwort; Anwesenheitskarte | Weitere Teams-/Präsenz-/Channel-Karten |
+| Benachrichtigungen | Einzel-/Gruppen-/zentrale Displaynachrichten und konfigurierbare E-Mail-Erinnerungen | Zusätzliche Kommunikationskanäle |
+| Betrieb | Handbücher, Dokumentationsprüfung, Tests, lokale Caches und Fehlerbehandlung | Power-BI-Ereignishistorie, Kennzahlen und Berichte |
+| Externe Systeme | Kein Implementierungsnachweis im importierten Projekt | Discord, Teams, Docbee, Pascom, Gäste und persönliche Kalenderanzeige |
+
+SSO bleibt außerhalb des implementierten Umfangs. Weiteres Zielbild und historische Aufgabenanzahlen werden nicht als nachgewiesene Funktionen ausgegeben. Details im Benutzer-/Administratorhandbuch und STATUS.md.

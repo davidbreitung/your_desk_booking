@@ -1,31 +1,31 @@
 # Projektstatus
 
-Stand: 2026-11-17
+Stand: 18.11.2026. Bestehenden Stand 0.15.2 aus dem früheren Projekt übernommen; neue Planungswünsche bleiben separat erhalten.
 
-## Aktueller Zustand
-Projektanforderungen aus bisherigen Gesprächen in dieses Repository übertragen. Es existiert ein Home-Assistant-Integrationstemplate; eine funktionsfähige Your-Desk-Booking-Integration ist damit **nicht** nachgewiesen. Keine produktive Home-Assistant- oder ESPHome-Konfiguration wurde importiert.
+## Implementiert im übernommenen Code
 
-## Historische Aufgabenlage
-Die bisherige Gesprächsplanung nennt **17 erledigte Aufgaben** und anschließend **43 offene Aufgaben**; danach kamen weitere neue Aufgaben hinzu (DESFire-EV3-Evaluierung, Check-in-Erinnerung, Kalenderanzeige, Gastverwaltung). Eine vollständige, verifizierte Einzelaufstellung der ursprünglichen 55 Aufgaben liegt hier nicht vor. Deshalb werden keine fehlenden Aufgaben oder Erledigungsnachweise erfunden.
+M365/Entra- und Places-Synchronisierung, Benutzer/Gruppen/Mitgliedschaften, Schreibtische und Räume, Kalendercache, lokaler Check-in/-out mit Buchungsschutz und Nichtanreise-Freigabe, tägliches Auschecken, Display-/Zubehörsteuerung, Push- und Mail-Erinnerungen, Raumplan-/Anwesenheitskarte und zwei Handbücher mit Pflegeprüfung.
 
-## Dokumentierte nächste Arbeitspakete
-1. Microsoft Places/Graph: lesende und schreibende Reservierungs-/Check-in-APIs, Rechte und Lizenzen verifizieren.
-2. Home-Assistant-Datenmodell und Zustandsabgleich spezifizieren.
-3. ESPHome-Display und Bedienelemente integrieren.
-4. Ad-hoc-Reservierung mit 15-Minuten-Schritten und Konfliktprüfung implementieren.
-5. NFC-/DESFire-EV3-Sicherheitskonzept evaluieren.
-6. Kalender, Erinnerungen, Gastverwaltung und Kommunikationsintegrationen priorisieren.
-7. Hardwaregehäuse, Diffusor und blendfreie Beleuchtung prototypisieren.
-8. Vollständige historische Aufgabenliste abgleichen und erst danach GitHub-Issues vollständig migrieren.
+Die frühere Aussage „nur Integrationstemplate“ beschreibt nicht mehr den übernommenen Quellstand. Die bisherige Statusdatei bleibt unter docs/history/planning-status-2026-11-17.md erhalten. Der unverbundene Beispiel-Integrationstemplate wird im Importzweig entfernt.
 
-## Tests
-Keine Tests für Your Desk Booking ausgeführt; keine API-Fähigkeiten bestätigt.
+## Anforderungen und offene Arbeit
 
-## Risiken
-- Microsoft Places bietet möglicherweise nicht alle benötigten Schreib-/Check-in-Funktionen über öffentlich unterstützte APIs.
-- Öffentliches Repository: keine internen Mitarbeiterinformationen, Zugangsdaten, Schlüsselinhalte oder Betriebsdetails einpflegen.
-- Ursprüngliche Aufgabenliste ist nur teilweise rekonstruierbar.
-- Template-Code darf nicht als produktionsreife Integration interpretiert werden.
+REQUIREMENTS.md um einen Ist-/Ziel-Abgleich ergänzt. Keine neueren Ziele verworfen und keine unbekannten Aufgaben nachträglich als erledigt markiert. Weiterhin offen: Microsoft-seitige Ad-hoc-Reservierungen/Check-ins, Werktagsende/15-Minuten-Dauerwahl, NFC/DESFire/Türcontroller, persönliche Kalenderanzeige, Gäste, Teams/Discord/Docbee/Pascom, Power-BI-Historie sowie Gehäuse-/Lichtkonzepte. Vorhandene lokale Check-ins sind kein nativer Places-Check-in.
 
-## Änderungsprotokoll
-- 2026-11-17: Anforderungen, Architektur und bekannte Aufgaben aus Projektgesprächen übernommen; keine funktionalen Änderungen und keine Tests.
+## Veröffentlichung und Sicherheit
+
+Nur eine bereinigte Referenzfassung wird veröffentlicht. Originaldateien und Produktivsystem unverändert. Neutrale Absender-/Buchungs-/Gerätevorgaben, keine produktiven Schlüssel, Mitarbeiterdaten oder Screenshots. Siehe docs/SOURCE_IMPORT.md. Die API-/Berechtigungsdetails wurden beim Import nicht erneut gegen Microsoft oder produktive Kalender getestet.
+
+## Tests dieses Imports
+
+- 169 Python-Tests im neuen Arbeitsordner erfolgreich. Ein erster Lauf scheiterte an fehlenden Testbibliotheken; nach lokaler Installation von requirements-dev.txt war der vollständige Lauf erfolgreich.
+- 13 JavaScript-Tests erfolgreich (Raumplan, Kartenbedienung und Anwesenheit).
+- Dokumentationsprüfung erfolgreich; HTML-Ausgaben und Handbuchspiegel unter docs/ entsprechen den redaktionellen Quellen.
+- Paketierung erfolgreich: 48 Integrationsdateien; öffentliches Referenzpaket mit neutralen Vorgaben. Kein erneuter HA-/Graph-/Hardwaretest.
+- Ausgewählte Quelldateien auf bekannte private Identifikatoren, interne Adressen, private Schlüssel, Tokens und lange fest eingetragene YAML-Schlüssel geprüft. Keine Treffer im freizugebenden Dateisatz.
+- Benutzerhandbuch aus dem aktuellen Stand übernommen; Administratorhandbuch um die neutrale öffentliche Referenz und den Spiegel-/Pflegeablauf ergänzt. Keine neue Benutzerfunktion eingeführt.
+- GitHub-CI wird separat im Pull Request ausgeführt; deren Ergebnis ist nicht mit den lokalen Tests gleichzusetzen.
+
+## Historische Bereitstellung
+
+Der frühere Chat dokumentiert eine installierte Version 0.15.2 und 169 erfolgreiche Python-Tests am 16.11.2026. Das ist ein historischer Nachweis der vorherigen Umgebung, keine erneute Bereitstellung oder Hardwareprüfung dieses Imports. Während des GitHub-Abgleichs wurden weder Home Assistant neu gestartet noch Kalender, Nachrichten oder Geräte verändert.

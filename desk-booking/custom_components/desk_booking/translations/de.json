@@ -1,0 +1,380 @@
+{
+  "title": "Desk Booking",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Desk Booking · Microsoft 365",
+        "description": "Microsoft Graph benötigt User.Read.All, GroupMember.Read.All und Place.Read.All als Anwendungsberechtigungen mit Administratorzustimmung. Secret leer lassen, um den bestehenden Wert zu behalten.",
+        "data": {
+          "tenant_id": "Tenant-ID",
+          "client_id": "Client-ID",
+          "client_secret": "Client-Secret",
+          "sync_interval": "Sync-Intervall (Minuten)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Desk Booking ist bereits eingerichtet."
+    },
+    "error": {
+      "invalid_config": "Tenant-ID, Client-ID, Secret und Intervall prüfen.",
+      "invalid_auth": "Microsoft-Anmeldung fehlgeschlagen. Secret und App prüfen.",
+      "insufficient_permissions": "Microsoft Graph benötigt User.Read.All, GroupMember.Read.All und Place.Read.All als Anwendungsberechtigungen mit Administratorzustimmung.",
+      "cannot_connect": "Verbindung fehlgeschlagen. Später erneut versuchen.",
+      "rate_limited": "Microsoft begrenzt die Anfragen. Später erneut versuchen.",
+      "invalid_response": "Unvollständige Microsoft-Antwort; lokale Daten bleiben erhalten.",
+      "graph_error": "Microsoft Graph hat die Anfrage abgewiesen.",
+      "delta_expired": "Microsoft-Synchronisierungsstand abgelaufen.",
+      "tenant_change_not_allowed": "Mandantenwechsel wird zum Schutz lokaler Identitäten nicht unterstützt.",
+      "ambiguous_place_identity": "Die Zuordnung einer Places-Ressource zu einem Konto ist nicht eindeutig."
+    }
+  },
+  "config_subentries": {
+    "employee": {
+      "entry_type": "Mitarbeiter",
+      "initiate_flow": {
+        "reconfigure": "Profil bearbeiten"
+      },
+      "step": {
+        "reconfigure": {
+          "title": "Profil bearbeiten",
+          "description": "NFC-Zuordnung lokal ändern. Stammdaten und Aktivstatus kommen aus Microsoft 365. Tischhöhen am Mitarbeitergerät bearbeiten.",
+          "data": {
+            "nfc_tag_id": "NFC-Tag-ID"
+          }
+        }
+      },
+      "error": {
+        "invalid_name": "Bitte einen Namen mit 1 bis 100 Zeichen eingeben.",
+        "invalid_uuid": "Bitte eine gültige, nicht leere Microsoft-ID im UUID-Format eingeben.",
+        "invalid_test_id": "Bitte eine eindeutige Testkennung mit 1 bis 100 Zeichen eingeben.",
+        "invalid_tag": "Maximal 255 Zeichen und keine Steuerzeichen verwenden.",
+        "duplicate_identity": "Für diese Identität besteht bereits ein Profil.",
+        "duplicate_tag": "Dieser NFC-Tag ist bereits einem anderen Profil zugeordnet.",
+        "invalid_height": "Die Höhe muss zwischen 50 und 140 cm liegen.",
+        "height_order": "Die Sitzhöhe muss kleiner als die Stehhöhe sein."
+      },
+      "abort": {
+        "reconfigure_successful": "Profil aktualisiert.",
+        "already_configured": "Für diese Identität besteht bereits ein Profil.",
+        "managed_by_m365": "Mitarbeiter werden ausschließlich aus Microsoft 365 importiert."
+      }
+    },
+    "desk": {
+      "entry_type": "Tisch",
+      "initiate_flow": {
+        "reconfigure": "Tisch bearbeiten"
+      },
+      "step": {
+        "reconfigure": {
+          "title": "Tisch einrichten",
+          "description": "Lokale Einstellungen bearbeiten. Bei Places-Schreibtischen ist das Display optional; für den Check-in wird es benötigt. Places-Synchronisierung erhält diese Einstellungen. {detail}",
+          "data": {
+            "name": "Tischname",
+            "display_device": "Schreibtisch-Display",
+            "display_name": "Anzeigename auf dem Display (leer = Tischname)",
+            "light_1_entity": "Licht 1: Entität",
+            "light_1_name": "Licht 1: Anzeigename",
+            "light_1_icon": "Licht 1: Symbol",
+            "light_2_entity": "Licht 2: Entität",
+            "light_2_name": "Licht 2: Anzeigename",
+            "light_2_icon": "Licht 2: Symbol",
+            "light_3_entity": "Licht 3: Entität",
+            "light_3_name": "Licht 3: Anzeigename",
+            "light_3_icon": "Licht 3: Symbol",
+            "light_4_entity": "Licht 4: Entität",
+            "light_4_name": "Licht 4: Anzeigename",
+            "light_4_icon": "Licht 4: Symbol",
+            "cover_entity": "Rollo / Jalousie",
+            "cover_name": "Rollo / Jalousie: Anzeigename",
+            "switch_entity": "Schaltkanal",
+            "switch_name": "Schaltkanal: Anzeigename",
+            "switch_icon": "Schaltkanal: Symbol"
+          }
+        }
+      },
+      "error": {
+        "invalid_desk": "Tischzuordnung prüfen. Details stehen oben."
+      }
+    },
+    "group": {
+      "entry_type": "Group"
+    },
+    "category": {
+      "entry_type": "Kategorie"
+    }
+  },
+  "entity": {
+    "number": {
+      "sitting_height": {
+        "name": "Sitzhöhe"
+      },
+      "standing_height": {
+        "name": "Stehhöhe"
+      }
+    },
+    "switch": {
+      "active": {
+        "name": "Profil aktiv"
+      }
+    },
+    "select": {
+      "selected_employee": {
+        "name": "Mitarbeiter für Check-in"
+      }
+    },
+    "button": {
+      "check_in": {
+        "name": "Test-Check-in"
+      },
+      "check_out": {
+        "name": "Auschecken"
+      }
+    },
+    "sensor": {
+      "occupant": {
+        "name": "Angemeldeter Mitarbeiter"
+      },
+      "desk_status": {
+        "name": "Belegung",
+        "state": {
+          "free": "Frei",
+          "applying": "Übertragung / Wiederherstellung ausstehend",
+          "checked_in": "Eingecheckt",
+          "error": "Übertragung fehlgeschlagen"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "height_order": {
+      "message": "Die Sitzhöhe muss kleiner als die Stehhöhe sein."
+    },
+    "invalid_height": {
+      "message": "Die Höhe muss zwischen 50 und 140 cm liegen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Desk Booking",
+        "menu_options": {
+          "display": "Displays",
+          "m365": "Microsoft 365",
+          "bookings": "Buchungen",
+          "desk": "Schreibtisch bearbeiten",
+          "employee": "Mitarbeiter bearbeiten",
+          "objects": "Objekte verwalten",
+          "mail": "E-Mail-Versand",
+          "floorplan": "Raumplan · Reservierungslink und Kennwort",
+          "manuals": "Handbücher"
+        }
+      },
+      "display": {
+        "title": "Globale Anzeige",
+        "description": "Zentrale Vorgaben für alle zugeordneten Displays. Geräte können weiterhin einzeln bedient werden.",
+        "data": {
+          "company_name": "Firmenname",
+          "display_brightness": "Display-Helligkeit",
+          "standby_brightness": "Standby-Helligkeit",
+          "standby_timeout": "Standby nach Sekunden (0 = deaktiviert)",
+          "standby_home": "Bei Standby zur Check-in-Seite wechseln"
+        }
+      },
+      "m365": {
+        "title": "Microsoft 365",
+        "description": "Microsoft Graph benötigt User.Read.All, GroupMember.Read.All und Place.Read.All als Anwendungsberechtigungen mit Administratorzustimmung. Secret leer lassen, um den bestehenden Wert zu behalten.",
+        "data": {
+          "tenant_id": "Tenant-ID",
+          "client_id": "Client-ID",
+          "client_secret": "Client-Secret",
+          "sync_interval": "Sync-Intervall (Minuten)"
+        }
+      },
+      "bookings": {
+        "title": "Buchungen",
+        "description": "Kalenderberechtigung: Calendars.ReadBasic.All (Anwendung), mit Administratorzustimmung. Suchzeitraum: 365 Tage.",
+        "data": {
+          "booking_interval": "Aktualisierung alle (Minuten)",
+          "daily_checkout_time": "Täglich alle Mitarbeiter auschecken um (HH:MM, lokale HA-Zeit)"
+        }
+      },
+      "desk": {
+        "title": "Schreibtisch bearbeiten",
+        "data": {
+          "record": "Auswahl"
+        }
+      },
+      "desk_edit": {
+        "title": "Tisch einrichten",
+        "description": "Lokale Einstellungen bearbeiten. Bei Places-Schreibtischen ist das Display optional; für den Check-in wird es benötigt. Places-Synchronisierung erhält diese Einstellungen. {detail}",
+        "data": {
+          "name": "Tischname",
+          "display_device": "Schreibtisch-Display",
+          "display_name": "Anzeigename auf dem Display (leer = Tischname)",
+          "light_1_entity": "Licht 1: Entität",
+          "light_1_name": "Licht 1: Anzeigename",
+          "light_1_icon": "Licht 1: Symbol",
+          "light_2_entity": "Licht 2: Entität",
+          "light_2_name": "Licht 2: Anzeigename",
+          "light_2_icon": "Licht 2: Symbol",
+          "light_3_entity": "Licht 3: Entität",
+          "light_3_name": "Licht 3: Anzeigename",
+          "light_3_icon": "Licht 3: Symbol",
+          "light_4_entity": "Licht 4: Entität",
+          "light_4_name": "Licht 4: Anzeigename",
+          "light_4_icon": "Licht 4: Symbol",
+          "cover_entity": "Rollo / Jalousie",
+          "cover_name": "Rollo / Jalousie: Anzeigename",
+          "switch_entity": "Schaltkanal",
+          "switch_name": "Schaltkanal: Anzeigename",
+          "switch_icon": "Schaltkanal: Symbol"
+        }
+      },
+      "employee": {
+        "title": "Mitarbeiter bearbeiten",
+        "data": {
+          "record": "Auswahl"
+        }
+      },
+      "employee_edit": {
+        "title": "Profil bearbeiten",
+        "description": "NFC-Zuordnung lokal ändern. Stammdaten und Aktivstatus kommen aus Microsoft 365. Tischhöhen am Mitarbeitergerät bearbeiten.",
+        "data": {
+          "nfc_tag_id": "NFC-Tag-ID"
+        }
+      },
+      "objects": {
+        "title": "Objekte verwalten",
+        "menu_options": {
+          "visible_objects": "Element ausblenden",
+          "hidden_objects": "Ausgeblendete Elemente anzeigen",
+          "delete_object": "Inaktives Objekt dauerhaft löschen"
+        }
+      },
+      "visible_objects": {
+        "title": "Element ausblenden",
+        "description": "Global in Desk-Booking-Karten und Auswahllisten ausblenden. Synchronisierung und Geräte in Home Assistant bleiben erhalten.",
+        "data": {
+          "record": "Objekt"
+        }
+      },
+      "hidden_objects": {
+        "title": "Ausgeblendete Elemente anzeigen",
+        "description": "Auswahl wieder global einblenden.",
+        "data": {
+          "record": "Objekt wieder einblenden"
+        }
+      },
+      "delete_object": {
+        "title": "Inaktives Objekt löschen",
+        "description": "Nur lokale, inaktive Objekte. Keine Änderung an Microsoft 365.",
+        "data": {
+          "record": "Objekt"
+        }
+      },
+      "delete_confirm": {
+        "title": "Dauerhaft löschen: {name}",
+        "description": "Entfernt das lokale Objekt, seine Entitäten, Planpositionen und Cache-Daten. Die Löschung der zugehörigen Recorder-Historie wird angefordert. Bestehende Backups bleiben unberührt. Nicht rückgängig zu machen. Ein später in Microsoft reaktiviertes Objekt kann neu importiert werden.",
+        "data": {
+          "confirm": "Ja, dieses inaktive Objekt und seine lokalen Daten dauerhaft löschen"
+        }
+      },
+      "mail": {
+        "title": "E-Mail-Versand",
+        "menu_options": {
+          "mail_settings": "Absender und Erinnerungen",
+          "mail_permissions": "Info: Microsoft-Berechtigungen einrichten",
+          "mail_placeholders": "Info: Alle Platzhalter",
+          "mail_preview": "Vorschau und Testmail"
+        }
+      },
+      "mail_settings": {
+        "title": "Absender und Erinnerungen",
+        "description": "Erinnerungen sind zunächst ausgeschaltet. Vor dem Aktivieren Berechtigungen einrichten und eine Testmail prüfen. Verfall-Erinnerungen gelten nur für Schreibtische (Verfall 30 Minuten nach Beginn). Passender Check-in unterdrückt beide Erinnerungen. Inhalte sind Klartext.",
+        "data": {
+          "sender": "Absenderadresse (Exchange-Online-Postfach)",
+          "dashboard_link": "Dashboard-Link (optional, leer möglich)",
+          "start_enabled": "Erinnerung vor Reservierungsbeginn aktivieren",
+          "start_minutes": "Minuten vor Beginn",
+          "start_subject": "Betreff vor Beginn",
+          "start_body": "Inhalt vor Beginn",
+          "expiry_enabled": "Erinnerung vor Verfall aktivieren",
+          "expiry_minutes": "Minuten vor Verfall (1–29)",
+          "expiry_subject": "Betreff vor Verfall",
+          "expiry_body": "Inhalt vor Verfall"
+        }
+      },
+      "mail_permissions": {
+        "title": "Microsoft-Berechtigungen für Mailversand",
+        "description": "1. [Entra Admin Center](https://entra.microsoft.com/) → App-Registrierungen → bestehende Desk-Booking-App → API-Berechtigungen → Microsoft Graph → Anwendungsberechtigungen → **Mail.Send**. Danach Administratorzustimmung erteilen. Delegierte Berechtigungen reichen für diesen Hintergrunddienst nicht.\n\n2. Der Absender muss ein tatsächliches Exchange-Online-Postfach sein. Das kann ein freigegebenes Postfach sein. Eine beliebige Aliasadresse genügt nicht.\n\n3. **Mail.Send ist grundsätzlich organisationsweit.** Ein Exchange-Administrator sollte den Zugriff auf das Absenderpostfach begrenzen: bevorzugt [Application RBAC](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac), Rolle `Application Mail.Send` mit passendem Ressourcenbereich. Bei dieser Variante darf keine zusätzliche unbeschränkte Mail.Send-Anwendungsberechtigung bestehen, da Berechtigungen addiert werden. Alternativ bestehende Application Access Policies prüfen. Zugriff auf erlaubte UND andere Postfächer testen.\n\n4. Hier Absender speichern, anschließend Vorschau und Testmail aufrufen. Bei Absenderwechsel die Postfachfreigabe entsprechend anpassen. Nur Administratoren können diese Einstellungen ändern.\n\nMicrosoft bestätigt zunächst nur die Annahme, keine Zustellung. Bei unklarem Ergebnis wird nicht automatisch erneut gesendet, um doppelte Nachrichten zu vermeiden."
+      },
+      "mail_placeholders": {
+        "title": "Alle verfügbaren Platzhalter",
+        "description": "{help}"
+      },
+      "mail_preview": {
+        "title": "Mail-Vorschau auswählen",
+        "data": {
+          "kind": "Erinnerung"
+        }
+      },
+      "mail_test": {
+        "title": "Vorschau und Testmail",
+        "description": "Absender: {sender}\n\n**Betreff:** {subject}\n\n{body}\n\nDie Vorschau verwendet Beispieldaten. Erst mit aktiviertem Schalter und Absenden wird eine echte Testmail versendet.",
+        "data": {
+          "recipient": "Testempfänger",
+          "send": "Diese Testmail jetzt versenden"
+        }
+      },
+      "mail_result": {
+        "title": "Ergebnis des Testversands",
+        "description": "{result}"
+      },
+      "floorplan": {
+        "title": "Raumplan · zentrale Einstellungen",
+        "description": "Der Reservierungslink öffnet sich in einem neuen Fenster. Kennwortschutz: {password_status}. Ein leeres Kennwortfeld behält das bisherige Kennwort. Ohne hinterlegtes Kennwort entfällt die Abfrage. Bearbeiten bleibt auf Administratoren beschränkt.",
+        "data": {
+          "booking_url": "Reservierungs-URL (HTTPS)",
+          "password": "Neues Kennwort für Plan bearbeiten und + Plan",
+          "clear_password": "Kennwort entfernen"
+        }
+      },
+      "manuals": {
+        "title": "Desk Booking · Handbücher",
+        "description": "Die Handbücher gehören zur installierten Integrationsversion und öffnen separat im Browser.\n\n{links}\n\nBeide Handbücher bieten Inhaltsverzeichnis, Suche und Drucken / als PDF speichern.\n\nZurück mit OK. Es werden keine Einstellungen geändert."
+      }
+    },
+    "error": {
+      "invalid_company_name": "Maximal 60 Zeichen, keine Steuerzeichen.",
+      "invalid_display_setting": "Wert außerhalb des erlaubten Bereichs.",
+      "invalid_config": "Tenant-ID, Client-ID, Secret und Intervall prüfen.",
+      "invalid_auth": "Microsoft-Anmeldung fehlgeschlagen. Secret und App prüfen.",
+      "insufficient_permissions": "Microsoft Graph benötigt User.Read.All, GroupMember.Read.All und Place.Read.All als Anwendungsberechtigungen mit Administratorzustimmung.",
+      "cannot_connect": "Verbindung fehlgeschlagen. Später erneut versuchen.",
+      "rate_limited": "Microsoft begrenzt die Anfragen. Später erneut versuchen.",
+      "invalid_response": "Unvollständige Microsoft-Antwort; lokale Daten bleiben erhalten.",
+      "graph_error": "Microsoft Graph hat die Anfrage abgewiesen.",
+      "delta_expired": "Microsoft-Synchronisierungsstand abgelaufen.",
+      "tenant_change_not_allowed": "Mandantenwechsel wird zum Schutz lokaler Identitäten nicht unterstützt.",
+      "ambiguous_place_identity": "Die Zuordnung einer Places-Ressource zu einem Konto ist nicht eindeutig.",
+      "invalid_desk": "Tischzuordnung prüfen. Details stehen oben.",
+      "invalid_name": "Bitte einen Namen mit 1 bis 100 Zeichen eingeben.",
+      "invalid_uuid": "Bitte eine gültige, nicht leere Microsoft-ID im UUID-Format eingeben.",
+      "invalid_test_id": "Bitte eine eindeutige Testkennung mit 1 bis 100 Zeichen eingeben.",
+      "invalid_tag": "Maximal 255 Zeichen und keine Steuerzeichen verwenden.",
+      "duplicate_identity": "Für diese Identität besteht bereits ein Profil.",
+      "duplicate_tag": "Dieser NFC-Tag ist bereits einem anderen Profil zugeordnet.",
+      "invalid_height": "Die Höhe muss zwischen 50 und 140 cm liegen.",
+      "height_order": "Die Sitzhöhe muss kleiner als die Stehhöhe sein.",
+      "invalid_booking_interval": "Bitte 1 bis 1440 ganze Minuten wählen.",
+      "invalid_checkout_time": "Bitte eine gültige Uhrzeit im Format HH:MM eingeben.",
+      "delete_failed": "Löschen fehlgeschlagen. Aktivstatus, Check-in und Speicher prüfen.",
+      "invalid_mail_settings": "Adresse, Vorlauf oder Platzhalter ungültig. Bitte die Info-Dialoge beachten.",
+      "invalid_floorplan_settings": "Bitte eine gültige HTTPS-Adresse und ein Kennwort mit höchstens 256 Zeichen eingeben."
+    },
+    "abort": {
+      "no_synced_records": "Noch keine passenden Objekte synchronisiert."
+    }
+  }
+}

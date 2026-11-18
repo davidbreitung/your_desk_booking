@@ -1,3 +1,9 @@
+# Implementierte Architektur (Import 2026-11-18)
+
+M365 führt Stammdaten und Gruppen, Places die Ressourcen, Exchange die Reservierungen. Home Assistant speichert geschützte lokale Zusatzdaten und Check-ins; Graph-App-Authentifizierung, Delta-/Kalendercache und ESPHome-Anbindung sind implementiert. Native Places-Check-ins und Ad-hoc-Microsoft-Buchungen sind nicht implementiert. Die folgende Zielarchitektur bleibt ein weiterer Planungsstand und beschreibt nicht den aktuellen Code.
+
+---
+
 # Zielarchitektur
 
 ## Datenfluss (geplant)

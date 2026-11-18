@@ -1,3 +1,9 @@
+# Vorhandene Schnittstellen (Import 2026-11-18)
+
+M365-Verzeichnis, Places-Ressourcen, Exchange-Ressourcenkalender, Mail.Send und Home Assistant/ESPHome sind im importierten Code vorhanden. Historische Laufzeitprüfungen sind in den Entwicklungsberichten beschrieben; dieser Import führt keinen erneuten Produktivtest aus. Persönliche Kalenderanzeige, Teams/Discord-Präsenz, Channel-Inhalte, Docbee und Pascom bleiben offen. Die folgende Tabelle ist das frühere Zielbild.
+
+---
+
 # Geplante Integrationen und Prüfpunkte
 
 | System | Ziel | Status |

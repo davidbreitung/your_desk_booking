@@ -1,0 +1,52 @@
+notify_all:
+  name: Nachricht an alle Displays
+  description: Nachricht auf allen zugeordneten Displays anzeigen. Priorität 1 rot, 2 gelb, 3 ohne Ring.
+  fields:
+    message:
+      name: Nachricht
+      required: true
+      selector:
+        text:
+    priority:
+      name: Priorität
+      default: "3"
+      selector:
+        select:
+          options: ["1", "2", "3"]
+    duration:
+      name: Anzeigedauer
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 300
+          unit_of_measurement: s
+checkout_all:
+  name: Alle Mitarbeiter abmelden
+  description: Alle belegten Tische auschecken und ihre vorherigen Displayfavoriten wiederherstellen.
+sync_m365:
+  name: Microsoft 365 synchronisieren
+  description: Benutzer, Gruppen und direkte Mitgliedschaften jetzt aus Microsoft 365 aktualisieren.
+sync_bookings:
+  name: Buchungen aktualisieren
+  description: Liest die nächsten Reservierungen der Places-Schreibtische erneut aus Microsoft 365.
+send_email:
+  name: E-Mail versenden
+  description: Sendet Klartext über das zentral konfigurierte Exchange-Postfach. Nur Administratoren und lokale Automationen. Microsoft-Annahme bestätigt noch keine Zustellung.
+  fields:
+    recipient:
+      name: Empfänger
+      required: true
+      selector:
+        text:
+    subject:
+      name: Betreff
+      required: true
+      selector:
+        text:
+    message:
+      name: Nachricht
+      required: true
+      selector:
+        text:
+          multiline: true
