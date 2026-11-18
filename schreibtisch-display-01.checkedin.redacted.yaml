@@ -1,0 +1,3257 @@
+# Board: Generic ESP32-S3 Board (Generic)
+# Definition: definitions/boards/generic-esp32s3/manifest.yaml
+
+esphome:
+  includes:
+    - display_resources.h
+  platformio_options:
+    build_flags: "-DBOARD_HAS_PSRAM"
+    board_build.esp-idf.memory_type: qio_opi
+    board_build.flash_mode: dio
+  on_boot:
+    priority: 800
+    then:
+      - output.turn_on: touch_int_release
+      - output.turn_on: lcd_power
+      - output.turn_on: display_reset
+      - delay: 100ms
+      - output.turn_off: display_reset
+      - delay: 600ms
+      - script.execute: display_wake
+      - script.execute: render_main_navigation
+  name: schreibtisch-display-01
+  friendly_name: Schreibtisch Display 01
+
+esp32:
+  variant: esp32s3
+  flash_size: 16MB
+  partitions: display-partitions-expanded.csv
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_FREERTOS_USE_TRACE_FACILITY: y
+      CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS: y
+      CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER: y
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32S3_DATA_CACHE_64KB: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+debug:
+  update_interval: 30s
+
+logger:
+
+api:
+  on_client_disconnected:
+    - lambda: |-
+        if (client_info.rfind("Home Assistant", 0) == 0) {
+          id(desk_data_valid) = false;
+          id(desk_name_valid) = false;
+          id(render_desk_status).execute();
+        }
+  actions:
+    - action: nachricht_anzeigen
+      variables:
+        nachricht: string
+      then:
+        - lambda: |-
+            id(booking_message) = false;
+        - globals.set:
+            id: message_open
+            value: 'true'
+        - lvgl.label.update:
+            id: message_text
+            text: !lambda |-
+              return nachricht;
+        - lvgl.widget.show: message_overlay
+        - script.execute: message_countdown
+        - lvgl.resume:
+        - script.execute: display_wake
+  encryption:
+    key: !secret desk_display_api_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret desk_display_password
+  ap:
+    ssid: Schreibtisch Di Fallback Hotspot
+    password: !secret desk_display_password
+
+  use_address: 192.0.2.10
+captive_portal:
+
+# Elecrow DHE03921D: example/esphome/Lesson05/21-touch.yaml
+# Existing Wi-Fi secrets, API encryption and OTA settings are preserved above.
+psram:
+  mode: octal
+  speed: 80MHz
+
+i2c:
+  sda: GPIO38
+  scl: GPIO39
+  id: bus_a
+  scan: true
+
+pcf8574:
+  - id: pcf
+    address: 0x21
+
+output:
+  - platform: ledc
+    pin: GPIO6
+    id: bl_pwm
+    frequency: 19531Hz
+  - platform: gpio
+    id: touch_int_release
+    pin:
+      pcf8574: pcf
+      number: 2
+      mode: {output: true}
+      inverted: false
+  - platform: gpio
+    id: lcd_power
+    pin:
+      pcf8574: pcf
+      number: 3
+      mode: {output: true}
+      inverted: false
+  - platform: gpio
+    id: display_reset
+    pin:
+      pcf8574: pcf
+      number: 4
+      mode: {output: true}
+      inverted: true
+
+light:
+  - platform: monochromatic
+    name: "LCD Backlight"
+    id: display_backlight
+    output: bl_pwm
+    default_transition_length: 0s
+    restore_mode: ALWAYS_ON
+
+spi:
+  clk_pin: GPIO2
+  mosi_pin: GPIO1
+
+display:
+  - platform: st7701s
+    id: my_display
+    auto_clear_enabled: false
+    update_interval: never
+    spi_mode: MODE3
+    color_order: RGB
+    invert_colors: false
+    dimensions:
+      width: 480
+      height: 480
+    cs_pin: GPIO16
+    de_pin: GPIO40
+    hsync_pin: GPIO15
+    vsync_pin: GPIO7
+    pclk_pin: GPIO41
+    data_pins:
+      red: [46, 3, 8, 18, 17]
+      green: [14, 13, 12, 11, 10, 9]
+      blue: [5, 45, 48, 47, 21]
+    hsync_front_porch: 20
+    hsync_pulse_width: 10
+    hsync_back_porch: 10
+    vsync_front_porch: 8
+    vsync_pulse_width: 10
+    vsync_back_porch: 10
+    pclk_frequency: 18MHz
+    pclk_inverted: true
+    init_sequence:
+      - [0x01]
+      - delay 120ms
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x10]
+      - [0xC0, 0x3B, 0x00]
+      - [0xC1, 0x0B, 0x02]
+      - [0xC2, 0x00, 0x02]
+      - [0xCC, 0x10]
+      - [0xCD, 0x08]
+      - [0xB0, 0x02, 0x13, 0x1B, 0x0D, 0x10, 0x05, 0x08, 0x07, 0x07, 0x24, 0x04, 0x11, 0x0E, 0x2C, 0x33, 0x1D]
+      - [0xB1, 0x05, 0x13, 0x1B, 0x0D, 0x11, 0x05, 0x08, 0x07, 0x07, 0x24, 0x04, 0x11, 0x0E, 0x2C, 0x33, 0x1D]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x11]
+      - [0xB0, 0x5D]
+      - [0xB1, 0x43]
+      - [0xB2, 0x81]
+      - [0xB3, 0x80]
+      - [0xB5, 0x43]
+      - [0xB7, 0x85]
+      - [0xB8, 0x20]
+      - [0xC1, 0x78]
+      - [0xC2, 0x78]
+      - [0xD0, 0x88]
+      - [0xE0, 0x00, 0x00, 0x02]
+      - [0xE1, 0x03, 0xA0, 0x00, 0x00, 0x04, 0xA0, 0x00, 0x00, 0x00, 0x20, 0x20]
+      - [0xE2, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      - [0xE3, 0x00, 0x00, 0x11, 0x00]
+      - [0xE4, 0x22, 0x00]
+      - [0xE5, 0x05, 0xEC, 0xA0, 0xA0, 0x07, 0xEE, 0xA0, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      - [0xE6, 0x00, 0x00, 0x11, 0x00]
+      - [0xE7, 0x22, 0x00]
+      - [0xE8, 0x06, 0xED, 0xA0, 0xA0, 0x08, 0xEF, 0xA0, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+      - [0xEB, 0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x00]
+      - [0xED, 0xFF, 0xFF, 0xFF, 0xBA, 0x0A, 0xBF, 0x45, 0xFF, 0xFF, 0x54, 0xFB, 0xA0, 0xAB, 0xFF, 0xFF, 0xFF]
+      - [0xEF, 0x10, 0x0D, 0x04, 0x08, 0x3F, 0x1F]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x13]
+      - [0xEF, 0x08]
+      - [0xFF, 0x77, 0x01, 0x00, 0x00, 0x00]
+      - [0x36, 0x08]
+      - [0x3A, 0x60]
+      - [0x11]
+      - delay 100ms
+      - [0x29]
+      - delay 50ms
+
+touchscreen:
+  - platform: cst816
+    id: touch_panel
+    display: my_display
+    reset_pin:
+      pcf8574: pcf
+      number: 0
+      mode: {output: true}
+      inverted: false
+    update_interval: 20ms
+    on_touch:
+      - script.execute: display_wake
+      - lambda: |-
+          id(swipe_direction) = 0;
+    on_update:
+      - script.execute: display_wake
+      - lambda: |-
+          if (id(message_open)) return;
+          for (auto t : touches) {
+            if (t.state < 1 || t.state > 2) continue;
+            // Central swipe area leaves the outer value ring independently usable.
+            if (t.x_org < 90 || t.x_org > 390 || t.y_org < 110 || t.y_org > 350) continue;
+            if (id(cover_page)->is_showing() && t.y_org > 170) continue;
+            int dx = (int)t.x - (int)t.x_org;
+            int dy = (int)t.y - (int)t.y_org;
+            if (abs(dx) >= 60 && abs(dx) > abs(dy) * 2)
+              id(swipe_direction) = dx < 0 ? 1 : -1;
+          }
+    on_release:
+      - script.execute: display_wake
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_open) && id(swipe_direction) != 0;
+          then:
+            - script.execute: change_page
+
+# Desk Booking supplies the authoritative occupancy and employee name.
+json:
+
+globals:
+  - id: next_booking_time
+    type: std::string
+    initial_value: '"Buchungen werden geladen"'
+  - id: next_booking_who
+    type: std::string
+    initial_value: '""'
+  - id: booking_active
+    type: bool
+    initial_value: 'false'
+  - id: next_booking_warning
+    type: bool
+    initial_value: 'false'
+  - id: next_booking_received
+    type: uint32_t
+    initial_value: '0'
+  - id: menu_selection
+    type: bool
+    initial_value: 'true'
+  - id: menu_index
+    type: int
+    initial_value: '0'
+  - id: cover_tilt_focus
+    type: bool
+    initial_value: 'false'
+  - id: booking_message
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: desk_data_valid
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: desk_name_valid
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: display_last_activity
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: display_is_standby
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: swipe_direction
+    type: int
+    initial_value: '0'
+  - id: message_seconds_left
+    type: int
+    initial_value: '15'
+  - id: message_open
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
+font:
+  - file: "gfonts://Roboto"
+    id: desk_name_font
+    size: 24
+    glyphsets:
+      - GF_Latin_Core
+
+text_sensor:
+  - platform: homeassistant
+    id: cover_name_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: cover_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool valid = !x.empty() && x != "unknown" && x != "unavailable";
+          id(cover_page)->skip = !valid;
+          lv_label_set_text(id(cover_name_label), valid ? x.c_str() : "Nicht zugeordnet");
+      - script.execute: render_main_navigation
+  - platform: homeassistant
+    id: switch_name_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: switch_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool valid = !x.empty() && x != "unknown" && x != "unavailable";
+          id(switch_page)->skip = !valid;
+          lv_label_set_text(id(switch_name_label), valid ? x.c_str() : "Nicht zugeordnet");
+      - script.execute: render_main_navigation
+  - platform: homeassistant
+    id: switch_state_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: switch_state
+    internal: true
+    on_value:
+      - lambda: |-
+          lv_label_set_text(id(switch_state_label), x == "on" ? "Ein" : x == "off" ? "Aus" : "Nicht erreichbar");
+  - platform: homeassistant
+    id: switch_icon_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: switch_icon
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:power";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_0
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:power-socket-eu";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_1
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:fan";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_2
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:monitor";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_3
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:radiator";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_4
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:toggle-switch";
+          then:
+            - lvgl.image.update:
+                id: [menu_switch_image, switch_dashboard_image]
+                src: switch_icon_5
+  - platform: homeassistant
+    id: light_icon_from_ha_1
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_1_icon
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:lightbulb-outline";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_0
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:spotlight-beam";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_1
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:led-strip-variant";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_2
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:ceiling-light";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_3
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:floor-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_4
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:desk-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_1, light_nav_image_2_1, light_nav_image_3_1, light_nav_image_4_1]
+                src: light_icon_5
+  - platform: homeassistant
+    id: light_icon_from_ha_2
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_2_icon
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:lightbulb-outline";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_0
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:spotlight-beam";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_1
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:led-strip-variant";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_2
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:ceiling-light";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_3
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:floor-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_4
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:desk-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_2, light_nav_image_2_2, light_nav_image_3_2, light_nav_image_4_2]
+                src: light_icon_5
+  - platform: homeassistant
+    id: light_icon_from_ha_3
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_3_icon
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:lightbulb-outline";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_0
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:spotlight-beam";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_1
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:led-strip-variant";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_2
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:ceiling-light";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_3
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:floor-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_4
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:desk-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_3, light_nav_image_2_3, light_nav_image_3_3, light_nav_image_4_3]
+                src: light_icon_5
+  - platform: homeassistant
+    id: light_icon_from_ha_4
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_4_icon
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:lightbulb-outline";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_0
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:spotlight-beam";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_1
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:led-strip-variant";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_2
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:ceiling-light";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_3
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:floor-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_4
+      - if:
+          condition:
+            lambda: |-
+              return x == "mdi:desk-lamp";
+          then:
+            - lvgl.image.update:
+                id: [light_nav_image_1_4, light_nav_image_2_4, light_nav_image_3_4, light_nav_image_4_4]
+                src: light_icon_5
+  - platform: homeassistant
+    id: company_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: company_name
+    internal: true
+    on_value:
+      - lambda: |-
+          if (x == "unknown" || x == "unavailable") return;
+          lv_label_set_text(id(company_booking), x.c_str());
+          lv_label_set_text(id(company_dimmer), x.c_str());
+          lv_label_set_text(id(company_dimmer_2), x.c_str());
+          lv_label_set_text(id(company_dimmer_3), x.c_str());
+          lv_label_set_text(id(company_dimmer_4), x.c_str());
+          lv_label_set_text(id(company_height), x.c_str());
+  - platform: homeassistant
+    id: desk_label_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: display_name
+    internal: true
+    on_value:
+      - lambda: |-
+          if (x != "unknown" && x != "unavailable") lv_label_set_text(id(desk_display_name), x.c_str());
+  - platform: homeassistant
+    id: light_name_from_ha_1
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_1_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool enabled = !x.empty() && x != "unknown" && x != "unavailable";
+          id(dimmer_page)->skip = !enabled;
+          lv_label_set_text(id(light_name), enabled ? x.c_str() : "Kein Licht zugeordnet");
+      - script.execute: render_light_navigation
+  - platform: homeassistant
+    id: light_name_from_ha_2
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_2_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool enabled = !x.empty() && x != "unknown" && x != "unavailable";
+          id(dimmer_page_2)->skip = !enabled;
+          lv_label_set_text(id(light_name_2), enabled ? x.c_str() : "Kein Licht zugeordnet");
+      - script.execute: render_light_navigation
+  - platform: homeassistant
+    id: light_name_from_ha_3
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_3_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool enabled = !x.empty() && x != "unknown" && x != "unavailable";
+          id(dimmer_page_3)->skip = !enabled;
+          lv_label_set_text(id(light_name_3), enabled ? x.c_str() : "Kein Licht zugeordnet");
+      - script.execute: render_light_navigation
+  - platform: homeassistant
+    id: light_name_from_ha_4
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: light_4_name
+    internal: true
+    on_value:
+      - lambda: |-
+          const bool enabled = !x.empty() && x != "unknown" && x != "unavailable";
+          id(dimmer_page_4)->skip = !enabled;
+          lv_label_set_text(id(light_name_4), enabled ? x.c_str() : "Kein Licht zugeordnet");
+      - script.execute: render_light_navigation
+  - platform: homeassistant
+    id: desk_status_from_ha
+    entity_id: sensor.schreibtisch_01_belegung
+    internal: true
+    on_value:
+      - lambda: |-
+          id(desk_data_valid) = true;
+      - script.execute: render_desk_status
+      - script.execute: display_wake
+  - platform: homeassistant
+    id: desk_employee_from_ha
+    entity_id: sensor.schreibtisch_01_angemeldeter_mitarbeiter
+    internal: true
+    on_value:
+      - lambda: |-
+          id(desk_name_valid) = true;
+      - script.execute: render_desk_status
+      - script.execute: display_wake
+
+sensor:
+  - platform: homeassistant
+    id: cover_tilt_feedback
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: cover_tilt_position
+    internal: true
+    on_value:
+      - lambda: |-
+          // Native LVGL feedback deliberately does not emit a command event.
+          if (std::isfinite(x) && x >= 0 && x <= 100) {
+            lv_slider_set_value(id(cover_tilt_slider), (int)x, LV_ANIM_OFF);
+            lv_label_set_text(id(cover_tilt_label), str_sprintf("Lamellen: %.0f %%", x).c_str());
+          } else lv_label_set_text(id(cover_tilt_label), "Lamellen: --");
+  - platform: homeassistant
+    id: cover_position_feedback
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: cover_position
+    internal: true
+    on_value:
+      - lambda: |-
+          // Native LVGL feedback deliberately does not emit a command event.
+          if (std::isfinite(x) && x >= 0 && x <= 100) {
+            lv_slider_set_value(id(cover_position_slider), (int)x, LV_ANIM_OFF);
+            lv_label_set_text(id(cover_position_label), str_sprintf("Höhe: %.0f %%", x).c_str());
+          } else lv_label_set_text(id(cover_position_label), "Höhe: --");
+  - platform: debug
+    free:
+      name: "Heap frei"
+      entity_category: diagnostic
+    block:
+      name: "Heap groesster Block"
+      entity_category: diagnostic
+    fragmentation:
+      name: "Heap Fragmentierung"
+      entity_category: diagnostic
+    loop_time:
+      name: "Schleifenzeit Maximum"
+      entity_category: diagnostic
+    psram:
+      name: "PSRAM frei"
+      entity_category: diagnostic
+  - platform: template
+    name: "CPU Auslastung"
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: 30s
+    lambda: |-
+      return desk_resources::cpu_busy();
+  - platform: template
+    name: "RAM Belegung"
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: 30s
+    lambda: |-
+      return desk_resources::used_percent(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+  - platform: template
+    name: "PSRAM Belegung"
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: 30s
+    lambda: |-
+      return desk_resources::used_percent(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  - platform: template
+    name: "Firmware Flash Belegung"
+    entity_category: diagnostic
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    state_class: measurement
+    update_interval: 300s
+    lambda: |-
+      return desk_resources::firmware_percent();
+  - platform: rotary_encoder
+    id: knob
+    internal: true
+    # A/B swapped to reverse the physical ring direction.
+    pin_a:
+      number: GPIO4
+      mode: {input: true, pullup: true}
+    pin_b:
+      number: GPIO42
+      mode: {input: true, pullup: true}
+    resolution: 1
+    on_clockwise:
+      - script.execute:
+          id: rotate_dashboard
+          direction: 1
+    on_anticlockwise:
+      - script.execute:
+          id: rotate_dashboard
+          direction: -1
+
+number:
+  - platform: lvgl
+    id: cover_tilt_command
+    name: "Lamellen Position Sollwert"
+    widget: cover_tilt_slider
+    trigger: on_value
+    restore_value: false
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_page)->is_showing() && id(cover_available).state;
+          then:
+            - delay: 20ms
+            - event.trigger:
+                id: cover_tilt_event
+                event_type: apply
+  - platform: lvgl
+    id: cover_position_command
+    name: "Rollo Position Sollwert"
+    widget: cover_position_slider
+    trigger: on_value
+    restore_value: false
+    on_value:
+      - if:
+          condition:
+            lambda: |-
+              return id(cover_page)->is_showing() && id(cover_available).state;
+          then:
+            - delay: 20ms
+            - event.trigger:
+                id: cover_position_event
+                event_type: apply
+  - platform: template
+    id: display_brightness
+    name: "Display Helligkeit"
+    icon: mdi:brightness-6
+    unit_of_measurement: "%"
+    min_value: 1
+    max_value: 100
+    step: 1
+    initial_value: 50
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - script.execute: display_wake
+  - platform: template
+    id: display_standby_brightness
+    name: "Display Standby Helligkeit"
+    icon: mdi:brightness-4
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 10
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - script.execute: display_wake
+  - platform: template
+    id: display_standby_timeout
+    name: "Display Standby Wartezeit"
+    icon: mdi:timer-outline
+    unit_of_measurement: "s"
+    min_value: 0
+    max_value: 3600
+    step: 1
+    initial_value: 60
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - script.execute: display_wake
+  - platform: template
+    id: favorite_sitting
+    name: "Favorit Sitzen"
+    unit_of_measurement: cm
+    icon: mdi:table-chair
+    min_value: 62
+    max_value: 128
+    step: 1
+    initial_value: 74
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - lvgl.label.update:
+          id: favorite_sitting_label
+          text: !lambda |-
+            return str_sprintf("%.0f cm", x);
+  - platform: template
+    id: favorite_standing
+    name: "Favorit Stehen"
+    unit_of_measurement: cm
+    icon: mdi:table-chair
+    min_value: 62
+    max_value: 128
+    step: 1
+    initial_value: 110
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - lvgl.label.update:
+          id: favorite_standing_label
+          text: !lambda |-
+            return str_sprintf("%.0f cm", x);
+  - platform: template
+    id: message_timeout
+    name: "Nachrichten Anzeigedauer"
+    icon: mdi:timer-outline
+    unit_of_measurement: s
+    min_value: 1
+    max_value: 300
+    step: 1
+    initial_value: 15
+    restore_value: true
+    optimistic: true
+    mode: box
+  - platform: lvgl
+    id: height_value
+    name: "Hoehe Sollwert"
+    widget: height_arc
+    unit_of_measurement: cm
+    icon: mdi:table-chair
+    mode: slider
+    trigger: on_value
+    restore_value: true
+    on_value:
+      - lvgl.label.update:
+          id: height_label
+          text: !lambda |-
+            return str_sprintf("%.0f cm", x);
+  - platform: lvgl
+    id: dimmer_value
+    name: "Dimmer Regelwert"
+    widget: dimmer_arc
+    unit_of_measurement: "%"
+    icon: mdi:brightness-percent
+    mode: slider
+    trigger: on_value
+    restore_value: true
+    on_value:
+      - lvgl.label.update:
+          id: dimmer_label
+          text: !lambda |-
+            return str_sprintf("%.0f %%", x);
+  - platform: lvgl
+    id: dimmer_value_2
+    name: "Dimmer Regelwert 2"
+    widget: dimmer_arc_2
+    unit_of_measurement: "%"
+    icon: mdi:brightness-percent
+    mode: slider
+    trigger: on_value
+    restore_value: true
+    on_value:
+      - lvgl.label.update:
+          id: dimmer_label_2
+          text: !lambda |-
+            return str_sprintf("%.0f %%", x);
+  - platform: lvgl
+    id: dimmer_value_3
+    name: "Dimmer Regelwert 3"
+    widget: dimmer_arc_3
+    unit_of_measurement: "%"
+    icon: mdi:brightness-percent
+    mode: slider
+    trigger: on_value
+    restore_value: true
+    on_value:
+      - lvgl.label.update:
+          id: dimmer_label_3
+          text: !lambda |-
+            return str_sprintf("%.0f %%", x);
+  - platform: lvgl
+    id: dimmer_value_4
+    name: "Dimmer Regelwert 4"
+    widget: dimmer_arc_4
+    unit_of_measurement: "%"
+    icon: mdi:brightness-percent
+    mode: slider
+    trigger: on_value
+    restore_value: true
+    on_value:
+      - lvgl.label.update:
+          id: dimmer_label_4
+          text: !lambda |-
+            return str_sprintf("%.0f %%", x);
+
+event:
+  - platform: template
+    id: switch_command
+    name: "Schaltkanal Taster"
+    device_class: button
+    event_types: [turn_on, turn_off]
+  - platform: template
+    id: cover_tilt_event
+    name: "Lamellen Position Befehl"
+    event_types: [apply]
+  - platform: template
+    id: cover_position_event
+    name: "Rollo Position Befehl"
+    event_types: [apply]
+  - platform: template
+    id: dimmer_toggle_event
+    name: "Dimmer Taster"
+    device_class: button
+    event_types: [turn_on, turn_off]
+  - platform: template
+    id: dimmer_toggle_event_2
+    name: "Dimmer Taster 2"
+    device_class: button
+    event_types: [turn_on, turn_off]
+  - platform: template
+    id: dimmer_toggle_event_3
+    name: "Dimmer Taster 3"
+    device_class: button
+    event_types: [turn_on, turn_off]
+  - platform: template
+    id: dimmer_toggle_event_4
+    name: "Dimmer Taster 4"
+    device_class: button
+    event_types: [turn_on, turn_off]
+
+binary_sensor:
+  - platform: homeassistant
+    id: standby_return_home
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: standby_home
+    internal: true
+  - platform: homeassistant
+    id: cover_available
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: cover_available
+    internal: true
+  - platform: homeassistant
+    id: cover_has_tilt
+    entity_id: sensor.schreibtisch_01_belegung
+    attribute: cover_tilt
+    internal: true
+    on_state:
+      - lambda: |-
+          if (x) {
+            lv_obj_clear_flag(id(cover_tilt_slider), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(cover_tilt_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(cover_tilt_select), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(cover_tilt_slider), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(cover_tilt_label), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(cover_tilt_select), LV_OBJ_FLAG_HIDDEN);
+            id(cover_tilt_focus) = false;
+          }
+  - platform: gpio
+    id: ring_button
+    internal: true
+    pin:
+      pcf8574: pcf
+      number: 5
+      mode: {input: true}
+      inverted: true
+    filters:
+      - delayed_on_off: 30ms
+    on_press:
+      - script.execute: display_wake
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_open) && id(display_enabled).state;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(menu_selection);
+                then:
+                  - lambda: |-
+                      id(menu_selection) = false;
+                  - script.execute: show_menu_page
+                else:
+                  - lambda: |-
+                      id(menu_selection) = true;
+            - script.execute: render_main_navigation
+
+script:
+  - id: render_main_navigation
+    then:
+      - lambda: |-
+          if (id(menu_booking) == nullptr || id(menu_switch) == nullptr) return;
+          const bool enabled[] = {true, !id(dimmer_page)->skip, true, !id(cover_page)->skip, !id(switch_page)->skip};
+          lv_obj_t *buttons[] = {id(menu_booking), id(menu_dimmer), id(menu_height), id(menu_cover), id(menu_switch)};
+          if (!enabled[id(menu_index)]) id(menu_index) = 0;
+          id(render_desk_status).execute();
+          int count = 0, position = 0;
+          for (bool e : enabled) if (e) ++count;
+          for (int i = 0; i < 5; ++i) {
+            if (!enabled[i]) { lv_obj_add_flag(buttons[i], LV_OBJ_FLAG_HIDDEN); continue; }
+            lv_obj_clear_flag(buttons[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_x(buttons[i], position++ * 60 - (count - 1) * 30);
+            bool selected = i == id(menu_index);
+            lv_obj_set_style_border_width(buttons[i], selected ? 3 : 0, LV_PART_MAIN);
+            lv_obj_set_style_border_color(buttons[i], lv_color_hex(id(menu_selection) ? 0x999999 : 0x00D2FF), LV_PART_MAIN);
+          }
+  - id: show_menu_page
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(menu_index) == 0;
+          then:
+            - lvgl.page.show: booking_page
+      - if:
+          condition:
+            lambda: |-
+              return id(menu_index) == 1;
+          then:
+            - lvgl.page.show: dimmer_page
+      - if:
+          condition:
+            lambda: |-
+              return id(menu_index) == 2;
+          then:
+            - lvgl.page.show: height_page
+      - if:
+          condition:
+            lambda: |-
+              return id(menu_index) == 3;
+          then:
+            - lvgl.page.show: cover_page
+      - if:
+          condition:
+            lambda: |-
+              return id(menu_index) == 4;
+          then:
+            - lvgl.page.show: switch_page
+      - script.execute: render_main_navigation
+  - id: standby_home_page
+    then:
+      - lambda: |-
+          id(menu_index) = 0;
+          id(menu_selection) = true;
+      - script.execute: show_menu_page
+  - id: rotate_dashboard
+    parameters:
+      direction: int
+    then:
+      - script.execute: display_wake
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_open) && id(display_enabled).state;
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(menu_selection);
+                then:
+                  - lambda: |-
+                      const bool enabled[] = {true, !id(dimmer_page)->skip, true, !id(cover_page)->skip, !id(switch_page)->skip};
+                      do { id(menu_index) = (id(menu_index) + direction + 5) % 5; } while (!enabled[id(menu_index)]);
+                  - script.execute: render_main_navigation
+                else:
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: dimmer_page
+                      then:
+                        - lvgl.arc.update:
+                            id: dimmer_arc
+                            value: !lambda |-
+                              return std::max(0, std::min(100, (int)lv_arc_get_value(id(dimmer_arc)) + direction * 5));
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: dimmer_page_2
+                      then:
+                        - lvgl.arc.update:
+                            id: dimmer_arc_2
+                            value: !lambda |-
+                              return std::max(0, std::min(100, (int)lv_arc_get_value(id(dimmer_arc_2)) + direction * 5));
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: dimmer_page_3
+                      then:
+                        - lvgl.arc.update:
+                            id: dimmer_arc_3
+                            value: !lambda |-
+                              return std::max(0, std::min(100, (int)lv_arc_get_value(id(dimmer_arc_3)) + direction * 5));
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: dimmer_page_4
+                      then:
+                        - lvgl.arc.update:
+                            id: dimmer_arc_4
+                            value: !lambda |-
+                              return std::max(0, std::min(100, (int)lv_arc_get_value(id(dimmer_arc_4)) + direction * 5));
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: height_page
+                      then:
+                        - lvgl.arc.update:
+                            id: height_arc
+                            value: !lambda |-
+                              return std::max(62, std::min(128, (int)lv_arc_get_value(id(height_arc)) + direction * 1));
+                  - if:
+                      condition:
+                        lambda: |-
+                          return id(cover_page)->is_showing() && id(cover_available).state;
+                      then:
+                        - if:
+                            condition:
+                              lambda: |-
+                                return id(cover_tilt_focus) && id(cover_has_tilt).state;
+                            then:
+                              - lvgl.slider.update:
+                                  id: cover_tilt_slider
+                                  value: !lambda |-
+                                    return std::max(0, std::min(100, (int)lv_slider_get_value(id(cover_tilt_slider)) + direction * 5));
+                            else:
+                              - lvgl.slider.update:
+                                  id: cover_position_slider
+                                  value: !lambda |-
+                                    return std::max(0, std::min(100, (int)lv_slider_get_value(id(cover_position_slider)) + direction * 5));
+                  - if:
+                      condition:
+                        lvgl.page.is_showing: switch_page
+                      then:
+                        - event.trigger:
+                            id: switch_command
+                            event_type: !lambda |-
+                              return direction > 0 ? "turn_on" : "turn_off";
+  - id: render_light_navigation
+    then:
+      - script.execute: render_main_navigation
+      - lambda: |-
+          const bool enabled[] = { !id(dimmer_page)->skip, !id(dimmer_page_2)->skip, !id(dimmer_page_3)->skip, !id(dimmer_page_4)->skip };
+          int count = 0;
+          for (bool value : enabled) if (value) ++count;
+          if (count > 1) lv_obj_clear_flag(id(light_nav_1), LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(id(light_nav_1), LV_OBJ_FLAG_HIDDEN);
+          { int index = 0;
+            if (enabled[0]) {
+              lv_obj_clear_flag(id(light_nav_1_1), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_1_1), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_1_1), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[1]) {
+              lv_obj_clear_flag(id(light_nav_1_2), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_1_2), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_1_2), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[2]) {
+              lv_obj_clear_flag(id(light_nav_1_3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_1_3), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_1_3), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[3]) {
+              lv_obj_clear_flag(id(light_nav_1_4), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_1_4), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_1_4), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (count > 1) lv_obj_clear_flag(id(light_nav_2), LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(id(light_nav_2), LV_OBJ_FLAG_HIDDEN);
+          { int index = 0;
+            if (enabled[0]) {
+              lv_obj_clear_flag(id(light_nav_2_1), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_2_1), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_2_1), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[1]) {
+              lv_obj_clear_flag(id(light_nav_2_2), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_2_2), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_2_2), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[2]) {
+              lv_obj_clear_flag(id(light_nav_2_3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_2_3), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_2_3), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[3]) {
+              lv_obj_clear_flag(id(light_nav_2_4), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_2_4), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_2_4), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (count > 1) lv_obj_clear_flag(id(light_nav_3), LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(id(light_nav_3), LV_OBJ_FLAG_HIDDEN);
+          { int index = 0;
+            if (enabled[0]) {
+              lv_obj_clear_flag(id(light_nav_3_1), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_3_1), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_3_1), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[1]) {
+              lv_obj_clear_flag(id(light_nav_3_2), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_3_2), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_3_2), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[2]) {
+              lv_obj_clear_flag(id(light_nav_3_3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_3_3), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_3_3), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[3]) {
+              lv_obj_clear_flag(id(light_nav_3_4), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_3_4), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_3_4), LV_OBJ_FLAG_HIDDEN);
+          }
+          if (count > 1) lv_obj_clear_flag(id(light_nav_4), LV_OBJ_FLAG_HIDDEN); else lv_obj_add_flag(id(light_nav_4), LV_OBJ_FLAG_HIDDEN);
+          { int index = 0;
+            if (enabled[0]) {
+              lv_obj_clear_flag(id(light_nav_4_1), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_4_1), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_4_1), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[1]) {
+              lv_obj_clear_flag(id(light_nav_4_2), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_4_2), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_4_2), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[2]) {
+              lv_obj_clear_flag(id(light_nav_4_3), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_4_3), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_4_3), LV_OBJ_FLAG_HIDDEN);
+            if (enabled[3]) {
+              lv_obj_clear_flag(id(light_nav_4_4), LV_OBJ_FLAG_HIDDEN);
+              lv_obj_set_x(id(light_nav_4_4), (index++ * 56) - ((count - 1) * 28));
+            } else lv_obj_add_flag(id(light_nav_4_4), LV_OBJ_FLAG_HIDDEN);
+          }
+  - id: render_desk_status
+    mode: restart
+    then:
+      - lambda: |-
+          const auto &status = id(desk_status_from_ha).state;
+          const bool valid = id(desk_data_valid);
+          const bool free = valid && status == "free";
+          const bool occupied = valid && status == "checked_in";
+          // Static full-circle border and shadow: no animation or spinner.
+          const bool booking_fresh = id(next_booking_received) != 0 && (uint32_t)(millis() - id(next_booking_received)) < 90000;
+          const bool booking_warn = booking_fresh && id(next_booking_warning);
+          const bool reservation_active = booking_fresh && id(booking_active);
+          const uint32_t ring_color = reservation_active ? 0xFF3B30 : booking_warn ? 0xFFD43B : 0x36FF7F;
+          lv_obj_set_style_border_color(id(desk_free_ring), lv_color_hex(ring_color), LV_PART_MAIN);
+          lv_obj_set_style_shadow_color(id(desk_free_ring), lv_color_hex(ring_color), LV_PART_MAIN);
+          lv_label_set_text(id(next_booking_time_label), booking_fresh ? id(next_booking_time).c_str() : "Buchungen nicht aktuell");
+          lv_label_set_text(id(next_booking_who_label), !occupied && booking_fresh ? id(next_booking_who).c_str() : "");
+          if (!occupied && (free || booking_warn || reservation_active) && !id(message_open)) lv_obj_clear_flag(id(desk_free_ring), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(desk_free_ring), LV_OBJ_FLAG_HIDDEN);
+          const char *headline = "STATUS OFFEN";
+          const char *hint = "Verbindung zu Home Assistant";
+          uint32_t color = 0xFFCB70;
+          std::string name;
+          if (free) {
+            headline = "FREI";
+            hint = "Check-in in Home Assistant";
+            color = 0x36FF7F;
+          } else if (occupied) {
+            headline = "EINGECHECKT";
+            hint = "Dein Arbeitsplatz";
+            color = 0x3399FF;
+            const auto &employee = id(desk_employee_from_ha).state;
+            if (id(desk_name_valid) && !employee.empty() && employee != "unknown" && employee != "unavailable" && employee != "—") name = employee;
+            else name = "Name wird geladen";
+          } else if (valid && status == "applying") {
+            headline = "BITTE WARTEN";
+            hint = "Check-in wird aktualisiert";
+          } else if (valid && status == "error") {
+            headline = "BITTE PRUEFEN";
+            hint = "Status in Home Assistant pruefen";
+          }
+          if (!occupied && (reservation_active || (free && booking_warn))) {
+            headline = "RESERVIERT";
+            color = reservation_active ? 0xFF3B30 : 0xFFD43B;
+            hint = reservation_active ? "Reservierung laeuft" : "Reservierung beginnt bald";
+          }
+          lv_label_set_text(id(desk_status_label), headline);
+          lv_obj_set_style_text_color(id(desk_status_label), lv_color_hex(color), LV_PART_MAIN);
+          lv_label_set_text(id(desk_employee_label), name.c_str());
+          lv_label_set_text(id(desk_hint_label), hint);
+          lv_label_set_text(id(desk_name_header), name.c_str());
+          if (occupied && id(menu_index) != 0) lv_obj_clear_flag(id(desk_name_header), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(desk_name_header), LV_OBJ_FLAG_HIDDEN);
+  - id: display_wake
+    mode: restart
+    then:
+      - lambda: |-
+          if (!id(display_enabled).state) return;
+          id(display_last_activity) = millis();
+          id(display_is_standby) = false;
+          float value = id(display_brightness).state;
+          auto call = id(display_backlight).turn_on();
+          call.set_brightness((std::isnan(value) ? 50.0f : std::max(1.0f, std::min(100.0f, value))) / 100.0f);
+          call.set_transition_length(0);
+          call.perform();
+  - id: change_page
+    mode: single
+    then:
+      - delay: 50ms
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_open);
+          then:
+            - if:
+                condition:
+                  lambda: |-
+                    return id(swipe_direction) > 0;
+                then:
+                  - lvgl.page.next:
+                      animation: MOVE_LEFT
+                      time: 200ms
+                else:
+                  - lvgl.page.previous:
+                      animation: MOVE_RIGHT
+                      time: 200ms
+      - lambda: |-
+          id(swipe_direction) = 0; id(menu_selection) = false;
+      - script.execute: render_main_navigation
+  - id: dismiss_message
+    then:
+      - script.stop: message_countdown
+      - lvgl.widget.hide: message_overlay
+      - globals.set:
+          id: message_open
+          value: 'false'
+      - script.execute: render_desk_status
+  - id: message_countdown
+    mode: restart
+    then:
+      - lvgl.widget.hide: desk_free_ring
+      - if:
+          condition:
+            lambda: |-
+              return id(booking_message) || id(message_priority).current_option() == "1" || id(message_priority).current_option() == "2";
+          then:
+            - lvgl.spinner.update:
+                id: message_priority_ring
+                arc_color: !lambda |-
+                  return lv_color_hex(id(booking_message) ? 0x36FF7F : (id(message_priority).current_option() == "1" ? 0xFF3030 : 0xFFD230));
+                indicator:
+                  arc_color: !lambda |-
+                    return lv_color_hex(id(booking_message) ? 0x36FF7F : (id(message_priority).current_option() == "1" ? 0xFF3030 : 0xFFD230));
+            - lvgl.widget.show: message_priority_ring
+          else:
+            - lvgl.widget.hide: message_priority_ring
+      - lambda: |-
+          float seconds = id(message_timeout).state;
+          id(message_seconds_left) = std::isnan(seconds) ? 15 : std::max(1, std::min(300, (int)seconds));
+      - lvgl.label.update:
+          id: message_ok_label
+          text: !lambda |-
+            return str_sprintf("OK (%d)", id(message_seconds_left));
+      - while:
+          condition:
+            lambda: |-
+              return id(message_open) && id(message_seconds_left) > 0;
+          then:
+            - delay: 1s
+            - lambda: |-
+                id(message_seconds_left)--;
+            - lvgl.label.update:
+                id: message_ok_label
+                text: !lambda |-
+                  return str_sprintf("OK (%d)", id(message_seconds_left));
+      - lvgl.widget.hide: message_overlay
+      - globals.set:
+          id: message_open
+          value: 'false'
+      - script.execute: render_desk_status
+
+image:
+  - platform: file
+    file: mdi:blinds-horizontal
+    id: nav_icon_cover
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:power
+    id: switch_icon_0
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:power-socket-eu
+    id: switch_icon_1
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:fan
+    id: switch_icon_2
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:monitor
+    id: switch_icon_3
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:radiator
+    id: switch_icon_4
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:toggle-switch
+    id: switch_icon_5
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:lightbulb-outline
+    id: light_icon_0
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:spotlight-beam
+    id: light_icon_1
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:led-strip-variant
+    id: light_icon_2
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:ceiling-light
+    id: light_icon_3
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:floor-lamp
+    id: light_icon_4
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:desk-lamp
+    id: light_icon_5
+    resize: 28x28
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:seat-passenger
+    id: favorite_sitting_icon
+    resize: 30x30
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:human-male
+    id: favorite_standing_icon
+    resize: 30x30
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:account
+    id: nav_icon_booking
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:lightbulb-outline
+    id: nav_icon_dimmer
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: mdi:arrow-up-down
+    id: nav_icon_height
+    resize: 32x32
+    type: GRAYSCALE
+    transparency: alpha_channel
+  - platform: file
+    file: "your-admins-dark-background-esphome.png"
+    id: your_admins_background
+    resize: 480x480
+    type: RGB565
+
+text:
+  - platform: template
+    id: next_booking_input
+    name: "Naechste Buchung"
+    entity_category: config
+    mode: text
+    min_length: 0
+    max_length: 255
+    optimistic: true
+    restore_value: false
+    initial_value: ""
+    set_action:
+      - lambda: |-
+          const bool parsed = json::parse_json(x, [](JsonObject root) -> bool {
+            if (!root["time"].is<const char *>() || !root["who"].is<const char *>() || !root["warn"].is<bool>()) return false;
+            id(next_booking_time) = root["time"].as<std::string>();
+            id(next_booking_who) = root["who"].as<std::string>();
+            id(next_booking_warning) = root["warn"].as<bool>();
+            id(booking_active) = root["active"].is<bool>() && root["active"].as<bool>();
+            id(next_booking_received) = millis();
+            return true;
+          });
+          if (parsed) id(render_desk_status).execute();
+  - platform: template
+    id: message_input
+    name: "Nachricht Text"
+    icon: mdi:message-text-outline
+    mode: text
+    min_length: 0
+    max_length: 255
+    optimistic: true
+    restore_value: false
+    initial_value: ""
+
+select:
+  - platform: template
+    id: message_priority
+    name: "Nachricht Prioritaet"
+    icon: mdi:priority-high
+    options: ["1", "2", "3"]
+    initial_option: "3"
+    optimistic: true
+    restore_value: true
+
+button:
+  - platform: template
+    id: send_message_button
+    name: "Nachricht senden"
+    icon: mdi:send
+    on_press:
+      - lambda: |-
+          id(booking_message) = false;
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_input).state.empty();
+          then:
+            - globals.set:
+                id: message_open
+                value: 'true'
+            - lvgl.label.update:
+                id: message_text
+                text: !lambda |-
+                  return id(message_input).state;
+            - lvgl.widget.show: message_overlay
+            - script.execute: message_countdown
+            - lvgl.resume:
+            - script.execute: display_wake
+  - platform: template
+    id: send_booking_message_button
+    name: "Check-in Nachricht senden"
+    icon: mdi:send
+    on_press:
+      - lambda: |-
+          id(booking_message) = true;
+      - if:
+          condition:
+            lambda: |-
+              return !id(message_input).state.empty();
+          then:
+            - globals.set:
+                id: message_open
+                value: 'true'
+            - lvgl.label.update:
+                id: message_text
+                text: !lambda |-
+                  return id(message_input).state;
+            - lvgl.widget.show: message_overlay
+            - script.execute: message_countdown
+            - lvgl.resume:
+            - script.execute: display_wake
+  - platform: template
+    name: "Hoehe anzeigen"
+    id: show_height_button
+    icon: mdi:table-chair
+    on_press:
+      - lvgl.page.show: height_page
+      - lvgl.resume:
+      - script.execute: display_wake
+  - platform: template
+    name: "Arbeitsplatz anzeigen"
+    id: show_booking_button
+    icon: mdi:desk
+    on_press:
+      - lvgl.page.show: booking_page
+      - lvgl.resume:
+      - script.execute: display_wake
+  - platform: template
+    name: "Dimmer anzeigen"
+    id: show_dimmer_button
+    icon: mdi:brightness-percent
+    on_press:
+      - lvgl.page.show: dimmer_page
+      - lvgl.resume:
+      - script.execute: display_wake
+  - platform: template
+    name: "Prio-Ticket melden"
+    id: priority_ticket_button
+    icon: mdi:ticket-confirmation
+    on_press:
+      - globals.set:
+          id: message_open
+          value: 'true'
+      - lvgl.label.update:
+          id: message_text
+          text: "Neues Prio-Ticket!"
+      - lvgl.widget.show: message_overlay
+      - script.execute: message_countdown
+      - lvgl.resume:
+      - script.execute: display_wake
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          if (id(next_booking_received) != 0 && (uint32_t)(millis() - id(next_booking_received)) >= 90000) {
+            id(next_booking_received) = 0;
+            id(next_booking_warning) = false;
+            id(render_desk_status).execute();
+          }
+  - interval: 1s
+    then:
+      - lambda: |-
+          if (!id(display_enabled).state) return;
+          // Keep notifications bright; start a full idle period after they close.
+          if (id(message_open)) {
+            id(display_last_activity) = millis();
+            return;
+          }
+          float timeout = id(display_standby_timeout).state;
+          if (std::isnan(timeout) || timeout <= 0 || id(display_is_standby)) return;
+          if ((uint32_t)(millis() - id(display_last_activity)) < (uint32_t)(timeout * 1000.0f)) return;
+          float normal = id(display_brightness).state;
+          float dimmed = id(display_standby_brightness).state;
+          if (std::isnan(normal)) normal = 50.0f;
+          if (std::isnan(dimmed)) dimmed = 10.0f;
+          dimmed = std::max(0.0f, std::min(normal, dimmed));
+          id(display_is_standby) = true;
+          if (id(standby_return_home).state) id(standby_home_page).execute();
+          auto call = id(display_backlight).turn_on();
+          call.set_brightness(dimmed / 100.0f);
+          call.set_transition_length(500);
+          call.perform();
+
+lvgl:
+  displays: [my_display]
+  touchscreens:
+    - touchscreen_id: touch_panel
+  buffer_size: 50%
+  bg_color: 0x101820
+  text_color: 0xFFFFFF
+  default_font: montserrat_20
+  page_wrap: true
+  pages:
+    - id: booking_page
+      on_load:
+        - lambda: |-
+            id(menu_index) = 0;
+        - script.execute: render_main_navigation
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - label:
+            id: company_booking
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -94
+            id: desk_display_name
+            width: 340
+            text_align: CENTER
+            long_mode: DOT
+            text_font: desk_name_font
+            text: "Arbeitsplatz 01"
+        - label:
+            id: desk_status_label
+            align: CENTER
+            y: -35
+            width: 370
+            text_align: CENTER
+            text: "STATUS OFFEN"
+            text_color: 0xFFCB70
+            text_font: montserrat_28
+        - label:
+            id: desk_employee_label
+            align: CENTER
+            y: 8
+            width: 340
+            height: 42
+            long_mode: WRAP
+            text_align: CENTER
+            text: ""
+            text_font: desk_name_font
+        - label:
+            id: desk_hint_label
+            align: CENTER
+            y: 42
+            width: 350
+            text_align: CENTER
+            text: "Verbindung zu Home Assistant"
+            text_color: 0xA9BBC9
+            text_font: montserrat_16
+        - label:
+            id: next_booking_time_label
+            align: CENTER
+            y: 77
+            width: 350
+            long_mode: DOT
+            text_align: CENTER
+            text: "Buchungen werden geladen"
+            text_font: montserrat_20
+            text_color: 0xFFD43B
+        - label:
+            id: next_booking_who_label
+            align: CENTER
+            y: 105
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text: ""
+            text_font: montserrat_20
+        - obj:
+            align: CENTER
+            y: -10
+            width: 360
+            height: 240
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            clickable: true
+            scrollable: false
+    - id: dimmer_page
+      on_load:
+        - lambda: |-
+            id(menu_index) = 1;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - arc:
+            id: dimmer_arc
+            align: CENTER
+            width: 440
+            height: 440
+            adjustable: true
+            min_value: 0
+            max_value: 100
+            value: 0
+            start_angle: 135
+            end_angle: 45
+            arc_color: 0x263746
+            arc_width: 12
+            indicator:
+              arc_color: 0x00D2FF
+              arc_width: 12
+            knob:
+              bg_color: 0xFFFFFF
+        - label:
+            id: company_dimmer
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -85
+            id: light_name
+            width: 340
+            height: 58
+            long_mode: WRAP
+            text_align: CENTER
+            text_font: desk_name_font
+            text: "Kein Licht zugeordnet"
+        - label:
+            id: dimmer_label
+            align: CENTER
+            y: -10
+            text: "0 %"
+            text_font: montserrat_40
+        - obj:
+            align: CENTER
+            y: -52
+            width: 300
+            height: 126
+            bg_opa: TRANSP
+            border_width: 0
+            clickable: true
+            scrollable: false
+        - button:
+            id: light_turn_on_1
+            align: CENTER
+            x: -62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x165C3A
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event
+                  event_type: turn_on
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Ein"
+                  clickable: false
+        - button:
+            id: light_turn_off_1
+            align: CENTER
+            x: 62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x343E48
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event
+                  event_type: turn_off
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Aus"
+                  clickable: false
+        - obj:
+            id: light_nav_1
+            align: CENTER
+            y: 100
+            width: 256
+            height: 52
+            hidden: true
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            widgets:
+              - button:
+                  id: light_nav_1_1
+                  align: CENTER
+                  x: -84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x143746
+                  border_width: 3
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_1_1
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0x00D2FF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_1_2
+                  align: CENTER
+                  x: -28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_2
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_1_2
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_1_3
+                  align: CENTER
+                  x: 28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_3
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_1_3
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_1_4
+                  align: CENTER
+                  x: 84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_4
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_1_4
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+    - id: dimmer_page_2
+      on_load:
+        - lambda: |-
+            id(menu_index) = 1;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - arc:
+            id: dimmer_arc_2
+            align: CENTER
+            width: 440
+            height: 440
+            adjustable: true
+            min_value: 0
+            max_value: 100
+            value: 0
+            start_angle: 135
+            end_angle: 45
+            arc_color: 0x263746
+            arc_width: 12
+            indicator:
+              arc_color: 0x00D2FF
+              arc_width: 12
+            knob:
+              bg_color: 0xFFFFFF
+        - label:
+            id: company_dimmer_2
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -85
+            id: light_name_2
+            width: 340
+            height: 58
+            long_mode: WRAP
+            text_align: CENTER
+            text_font: desk_name_font
+            text: "Kein Licht zugeordnet"
+        - label:
+            id: dimmer_label_2
+            align: CENTER
+            y: -10
+            text: "0 %"
+            text_font: montserrat_40
+        - obj:
+            align: CENTER
+            y: -52
+            width: 300
+            height: 126
+            bg_opa: TRANSP
+            border_width: 0
+            clickable: true
+            scrollable: false
+        - button:
+            id: light_turn_on_2
+            align: CENTER
+            x: -62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x165C3A
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_2
+                  event_type: turn_on
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Ein"
+                  clickable: false
+        - button:
+            id: light_turn_off_2
+            align: CENTER
+            x: 62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x343E48
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_2
+                  event_type: turn_off
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Aus"
+                  clickable: false
+        - obj:
+            id: light_nav_2
+            align: CENTER
+            y: 100
+            width: 256
+            height: 52
+            hidden: true
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            widgets:
+              - button:
+                  id: light_nav_2_1
+                  align: CENTER
+                  x: -84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_2_1
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_2_2
+                  align: CENTER
+                  x: -28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x143746
+                  border_width: 3
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_2
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_2_2
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0x00D2FF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_2_3
+                  align: CENTER
+                  x: 28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_3
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_2_3
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_2_4
+                  align: CENTER
+                  x: 84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_4
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_2_4
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+    - id: dimmer_page_3
+      on_load:
+        - lambda: |-
+            id(menu_index) = 1;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - arc:
+            id: dimmer_arc_3
+            align: CENTER
+            width: 440
+            height: 440
+            adjustable: true
+            min_value: 0
+            max_value: 100
+            value: 0
+            start_angle: 135
+            end_angle: 45
+            arc_color: 0x263746
+            arc_width: 12
+            indicator:
+              arc_color: 0x00D2FF
+              arc_width: 12
+            knob:
+              bg_color: 0xFFFFFF
+        - label:
+            id: company_dimmer_3
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -85
+            id: light_name_3
+            width: 340
+            height: 58
+            long_mode: WRAP
+            text_align: CENTER
+            text_font: desk_name_font
+            text: "Kein Licht zugeordnet"
+        - label:
+            id: dimmer_label_3
+            align: CENTER
+            y: -10
+            text: "0 %"
+            text_font: montserrat_40
+        - obj:
+            align: CENTER
+            y: -52
+            width: 300
+            height: 126
+            bg_opa: TRANSP
+            border_width: 0
+            clickable: true
+            scrollable: false
+        - button:
+            id: light_turn_on_3
+            align: CENTER
+            x: -62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x165C3A
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_3
+                  event_type: turn_on
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Ein"
+                  clickable: false
+        - button:
+            id: light_turn_off_3
+            align: CENTER
+            x: 62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x343E48
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_3
+                  event_type: turn_off
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Aus"
+                  clickable: false
+        - obj:
+            id: light_nav_3
+            align: CENTER
+            y: 100
+            width: 256
+            height: 52
+            hidden: true
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            widgets:
+              - button:
+                  id: light_nav_3_1
+                  align: CENTER
+                  x: -84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_3_1
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_3_2
+                  align: CENTER
+                  x: -28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_2
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_3_2
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_3_3
+                  align: CENTER
+                  x: 28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x143746
+                  border_width: 3
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_3
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_3_3
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0x00D2FF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_3_4
+                  align: CENTER
+                  x: 84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_4
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_3_4
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+    - id: dimmer_page_4
+      on_load:
+        - lambda: |-
+            id(menu_index) = 1;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - arc:
+            id: dimmer_arc_4
+            align: CENTER
+            width: 440
+            height: 440
+            adjustable: true
+            min_value: 0
+            max_value: 100
+            value: 0
+            start_angle: 135
+            end_angle: 45
+            arc_color: 0x263746
+            arc_width: 12
+            indicator:
+              arc_color: 0x00D2FF
+              arc_width: 12
+            knob:
+              bg_color: 0xFFFFFF
+        - label:
+            id: company_dimmer_4
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -85
+            id: light_name_4
+            width: 340
+            height: 58
+            long_mode: WRAP
+            text_align: CENTER
+            text_font: desk_name_font
+            text: "Kein Licht zugeordnet"
+        - label:
+            id: dimmer_label_4
+            align: CENTER
+            y: -10
+            text: "0 %"
+            text_font: montserrat_40
+        - obj:
+            align: CENTER
+            y: -52
+            width: 300
+            height: 126
+            bg_opa: TRANSP
+            border_width: 0
+            clickable: true
+            scrollable: false
+        - button:
+            id: light_turn_on_4
+            align: CENTER
+            x: -62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x165C3A
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_4
+                  event_type: turn_on
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Ein"
+                  clickable: false
+        - button:
+            id: light_turn_off_4
+            align: CENTER
+            x: 62
+            y: 40
+            width: 112
+            height: 44
+            radius: 12
+            bg_color: 0x343E48
+            border_width: 0
+            shadow_width: 0
+            on_click:
+              - event.trigger:
+                  id: dimmer_toggle_event_4
+                  event_type: turn_off
+              - script.execute: display_wake
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Aus"
+                  clickable: false
+        - obj:
+            id: light_nav_4
+            align: CENTER
+            y: 100
+            width: 256
+            height: 52
+            hidden: true
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            scrollable: false
+            widgets:
+              - button:
+                  id: light_nav_4_1
+                  align: CENTER
+                  x: -84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_4_1
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_4_2
+                  align: CENTER
+                  x: -28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_2
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_4_2
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_4_3
+                  align: CENTER
+                  x: 28
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x101820
+                  border_width: 0
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_3
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_4_3
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0xFFFFFF
+                        image_recolor_opa: COVER
+                        clickable: false
+              - button:
+                  id: light_nav_4_4
+                  align: CENTER
+                  x: 84
+                  width: 48
+                  height: 46
+                  radius: 12
+                  pad_all: 0
+                  bg_color: 0x143746
+                  border_width: 3
+                  border_color: 0x00D2FF
+                  shadow_width: 0
+                  on_click:
+                    - lambda: |-
+                        id(menu_selection) = false;
+                    - lvgl.page.show: dimmer_page_4
+                    - script.execute: display_wake
+                  widgets:
+                    - image:
+                        id: light_nav_image_4_4
+                        align: CENTER
+                        src: light_icon_0
+                        image_recolor: 0x00D2FF
+                        image_recolor_opa: COVER
+                        clickable: false
+    - id: height_page
+      on_load:
+        - lambda: |-
+            id(menu_index) = 2;
+        - script.execute: render_main_navigation
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - arc:
+            id: height_arc
+            align: CENTER
+            width: 440
+            height: 440
+            adjustable: true
+            min_value: 62
+            max_value: 128
+            value: 62
+            start_angle: 135
+            end_angle: 45
+            arc_color: 0x263746
+            arc_width: 12
+            indicator:
+              arc_color: 0x00D2FF
+              arc_width: 12
+            knob:
+              bg_color: 0xFFFFFF
+        - label:
+            id: company_height
+            align: CENTER
+            y: -140
+            text: "your-admins"
+            text_font: desk_name_font
+            width: 340
+            long_mode: DOT
+            text_align: CENTER
+            text_color: 0x00D2FF
+        - label:
+            align: CENTER
+            y: -85
+            text: "HOEHE"
+        - label:
+            id: height_label
+            align: CENTER
+            y: -10
+            text: "62 cm"
+            text_font: montserrat_40
+        - obj:
+            align: CENTER
+            y: -65
+            width: 300
+            height: 120
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 0
+            clickable: true
+            scrollable: false
+        - button:
+            id: favorite_sitting_button
+            align: CENTER
+            x: -58
+            y: 65
+            width: 100
+            height: 74
+            radius: 16
+            bg_color: 0x143746
+            border_width: 1
+            border_color: 0x007F9E
+            pad_all: 4
+            scrollable: false
+            on_click:
+              - lvgl.arc.update:
+                  id: height_arc
+                  value: !lambda |-
+                    float value = id(favorite_sitting).state;
+                    return std::isnan(value) ? 74 : std::max(62, std::min(128, (int)value));
+            widgets:
+              - image:
+                  align: TOP_MID
+                  y: 2
+                  src: favorite_sitting_icon
+                  image_recolor: 0xFFFFFF
+                  image_recolor_opa: COVER
+                  clickable: false
+              - label:
+                  id: favorite_sitting_label
+                  align: BOTTOM_MID
+                  y: -2
+                  text: "74 cm"
+                  text_font: montserrat_16
+                  clickable: false
+        - button:
+            id: favorite_standing_button
+            align: CENTER
+            x: 58
+            y: 65
+            width: 100
+            height: 74
+            radius: 16
+            bg_color: 0x143746
+            border_width: 1
+            border_color: 0x007F9E
+            pad_all: 4
+            scrollable: false
+            on_click:
+              - lvgl.arc.update:
+                  id: height_arc
+                  value: !lambda |-
+                    float value = id(favorite_standing).state;
+                    return std::isnan(value) ? 110 : std::max(62, std::min(128, (int)value));
+            widgets:
+              - image:
+                  align: TOP_MID
+                  y: 2
+                  src: favorite_standing_icon
+                  image_recolor: 0xFFFFFF
+                  image_recolor_opa: COVER
+                  clickable: false
+              - label:
+                  id: favorite_standing_label
+                  align: BOTTOM_MID
+                  y: -2
+                  text: "110 cm"
+                  text_font: montserrat_16
+                  clickable: false
+    - id: cover_page
+      text_font: desk_name_font
+      on_load:
+        - lambda: |-
+            id(menu_index) = 3;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - label:
+            id: cover_name_label
+            align: CENTER
+            y: -128
+            width: 300
+            long_mode: DOT
+            text_align: CENTER
+            text: "Nicht zugeordnet"
+            text_font: desk_name_font
+        - label:
+            id: cover_position_label
+            text_font: desk_name_font
+            align: CENTER
+            y: -50
+            hidden: false
+            text: "Höhe: --"
+        - slider:
+            id: cover_position_slider
+            align: CENTER
+            y: -15
+            width: 250
+            height: 16
+            min_value: 0
+            max_value: 100
+            value: 0
+            hidden: false
+            on_press:
+              - lambda: |-
+                  id(menu_selection) = false; id(cover_tilt_focus) = false;
+              - script.execute: render_main_navigation
+            on_value:
+              - script.execute: display_wake
+              - lvgl.label.update:
+                  id: cover_position_label
+                  text: !lambda |-
+                    return str_sprintf("Höhe: %.0f %%", x);
+        - label:
+            id: cover_tilt_label
+            align: CENTER
+            y: 45
+            hidden: true
+            text: "Lamellen: --"
+        - slider:
+            id: cover_tilt_slider
+            align: CENTER
+            y: 80
+            width: 250
+            height: 16
+            min_value: 0
+            max_value: 100
+            value: 0
+            hidden: true
+            on_press:
+              - lambda: |-
+                  id(menu_selection) = false; id(cover_tilt_focus) = true;
+              - script.execute: render_main_navigation
+            on_value:
+              - script.execute: display_wake
+              - lvgl.label.update:
+                  id: cover_tilt_label
+                  text: !lambda |-
+                    return str_sprintf("Lamellen: %.0f %%", x);
+        - button:
+            id: cover_position_select
+            align: CENTER
+            x: -65
+            y: -85
+            width: 120
+            height: 32
+            hidden: false
+            on_click:
+              - lambda: |-
+                  id(cover_tilt_focus) = false; id(menu_selection) = false;
+              - script.execute: render_main_navigation
+            widgets:
+              - label:
+                  text: "Höhe"
+                  text_font: desk_name_font
+                  align: CENTER
+        - button:
+            id: cover_tilt_select
+            align: CENTER
+            x: 65
+            y: -85
+            width: 120
+            height: 32
+            hidden: true
+            on_click:
+              - lambda: |-
+                  id(cover_tilt_focus) = true; id(menu_selection) = false;
+              - script.execute: render_main_navigation
+            widgets:
+              - label:
+                  text: "Lamellen"
+                  align: CENTER
+    - id: switch_page
+      on_load:
+        - lambda: |-
+            id(menu_index) = 4;
+        - script.execute: render_main_navigation
+      skip: true
+      bg_color: 0x101820
+      scrollable: false
+      widgets:
+        - image:
+            src: your_admins_background
+            align: CENTER
+            clickable: false
+        - label:
+            id: switch_name_label
+            align: CENTER
+            y: -128
+            width: 300
+            long_mode: DOT
+            text_align: CENTER
+            text: "Nicht zugeordnet"
+            text_font: desk_name_font
+        - image:
+            id: switch_dashboard_image
+            src: switch_icon_0
+            align: CENTER
+            y: -70
+        - label:
+            id: switch_state_label
+            align: CENTER
+            y: -20
+            text: "Nicht erreichbar"
+        - button:
+            align: CENTER
+            x: -65
+            y: 50
+            width: 115
+            height: 55
+            on_click:
+              - script.execute: display_wake
+              - event.trigger:
+                  id: switch_command
+                  event_type: turn_on
+            widgets:
+              - label:
+                  text: "Ein"
+                  align: CENTER
+        - button:
+            align: CENTER
+            x: 65
+            y: 50
+            width: 115
+            height: 55
+            on_click:
+              - script.execute: display_wake
+              - event.trigger:
+                  id: switch_command
+                  event_type: turn_off
+            widgets:
+              - label:
+                  text: "Aus"
+                  align: CENTER
+  top_layer:
+    widgets:
+      - button:
+          id: menu_booking
+          align: CENTER
+          x: -120
+          y: 155
+          width: 54
+          height: 52
+          radius: 14
+          bg_color: 0x101820
+          border_width: 0
+          pad_all: 3
+          shadow_width: 0
+          scrollable: false
+          on_click:
+            - script.execute: display_wake
+            - lambda: |-
+                id(menu_index) = 0; id(menu_selection) = false;
+            - script.execute: show_menu_page
+          widgets:
+            - image:
+                id: menu_booking_image
+                src: nav_icon_booking
+                align: CENTER
+                image_recolor: 0xFFFFFF
+                image_recolor_opa: COVER
+                clickable: false
+      - button:
+          id: menu_dimmer
+          align: CENTER
+          x: -60
+          y: 155
+          width: 54
+          height: 52
+          radius: 14
+          bg_color: 0x101820
+          border_width: 0
+          pad_all: 3
+          shadow_width: 0
+          scrollable: false
+          on_click:
+            - script.execute: display_wake
+            - lambda: |-
+                id(menu_index) = 1; id(menu_selection) = false;
+            - script.execute: show_menu_page
+          widgets:
+            - image:
+                id: menu_dimmer_image
+                src: nav_icon_dimmer
+                align: CENTER
+                image_recolor: 0xFFFFFF
+                image_recolor_opa: COVER
+                clickable: false
+      - button:
+          id: menu_height
+          align: CENTER
+          x: 0
+          y: 155
+          width: 54
+          height: 52
+          radius: 14
+          bg_color: 0x101820
+          border_width: 0
+          pad_all: 3
+          shadow_width: 0
+          scrollable: false
+          on_click:
+            - script.execute: display_wake
+            - lambda: |-
+                id(menu_index) = 2; id(menu_selection) = false;
+            - script.execute: show_menu_page
+          widgets:
+            - image:
+                id: menu_height_image
+                src: nav_icon_height
+                align: CENTER
+                image_recolor: 0xFFFFFF
+                image_recolor_opa: COVER
+                clickable: false
+      - button:
+          id: menu_cover
+          align: CENTER
+          x: 60
+          y: 155
+          width: 54
+          height: 52
+          radius: 14
+          bg_color: 0x101820
+          border_width: 0
+          pad_all: 3
+          shadow_width: 0
+          scrollable: false
+          on_click:
+            - script.execute: display_wake
+            - lambda: |-
+                id(menu_index) = 3; id(menu_selection) = false;
+            - script.execute: show_menu_page
+          widgets:
+            - image:
+                id: menu_cover_image
+                src: nav_icon_cover
+                align: CENTER
+                image_recolor: 0xFFFFFF
+                image_recolor_opa: COVER
+                clickable: false
+      - button:
+          id: menu_switch
+          align: CENTER
+          x: 120
+          y: 155
+          width: 54
+          height: 52
+          radius: 14
+          bg_color: 0x101820
+          border_width: 0
+          pad_all: 3
+          shadow_width: 0
+          scrollable: false
+          on_click:
+            - script.execute: display_wake
+            - lambda: |-
+                id(menu_index) = 4; id(menu_selection) = false;
+            - script.execute: show_menu_page
+          widgets:
+            - image:
+                id: menu_switch_image
+                src: switch_icon_0
+                align: CENTER
+                image_recolor: 0xFFFFFF
+                image_recolor_opa: COVER
+                clickable: false
+      - obj:
+          id: desk_free_ring
+          hidden: true
+          align: CENTER
+          width: 464
+          height: 464
+          radius: 232
+          bg_opa: TRANSP
+          border_width: 10
+          border_color: 0x36FF7F
+          border_opa: COVER
+          shadow_color: 0x36FF7F
+          shadow_width: 16
+          shadow_opa: 55%
+          pad_all: 0
+          clickable: false
+          scrollable: false
+      - label:
+          id: desk_name_header
+          hidden: true
+          align: CENTER
+          y: -178
+          width: 290
+          height: 28
+          long_mode: DOT
+          text_align: CENTER
+          text: ""
+          text_font: desk_name_font
+          text_color: 0xFFFFFF
+          clickable: false
+      - obj:
+          id: message_overlay
+          hidden: true
+          align: CENTER
+          width: 480
+          height: 480
+          radius: 0
+          border_width: 0
+          pad_all: 0
+          bg_color: 0x101820
+          bg_opa: COVER
+          clickable: true
+          scrollable: false
+          widgets:
+            - spinner:
+                id: message_priority_ring
+                hidden: true
+                align: CENTER
+                width: 470
+                height: 470
+                spin_time: 1400ms
+                arc_length: 90deg
+                arc_width: 24
+                arc_color: 0xFF3030
+                arc_opa: 25%
+                arc_rounded: true
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 0
+                clickable: false
+                scrollable: false
+                indicator:
+                  arc_width: 24
+                  arc_color: 0xFF3030
+                  arc_opa: COVER
+                  arc_rounded: true
+            - label:
+                align: TOP_MID
+                y: 60
+                text: "NACHRICHT"
+                text_color: 0x00D2FF
+                text_font: montserrat_28
+            - obj:
+                align: CENTER
+                y: -5
+                width: 330
+                height: 210
+                bg_opa: TRANSP
+                border_width: 0
+                pad_all: 8
+                scroll_dir: VER
+                widgets:
+                  - label:
+                      id: message_text
+                      width: 310
+                      long_mode: WRAP
+                      text: ""
+                      text_font: montserrat_20
+                      text_color: 0xFFFFFF
+            - button:
+                align: CENTER
+                y: 155
+                width: 180
+                height: 52
+                radius: 26
+                bg_color: 0x007F9E
+                on_click:
+                  - script.execute: dismiss_message
+                widgets:
+                  - label:
+                      align: CENTER
+                      id: message_ok_label
+                      text: "OK (15)"
+
+
+switch:
+  - platform: template
+    id: display_enabled
+    name: "Display Aktiv"
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    turn_on_action:
+      - delay: 1ms
+      - script.execute: display_wake
+    turn_off_action:
+      - light.turn_off: display_backlight

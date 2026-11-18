@@ -1,0 +1,15 @@
+{
+  "domain": "desk_booking",
+  "name": "Desk Booking",
+  "version": "0.15.2",
+  "dependencies": [
+    "http",
+    "websocket_api"
+  ],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "codeowners": [],
+  "requirements": [],
+  "documentation": "https://www.home-assistant.io/integrations/"
+}

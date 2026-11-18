@@ -1,0 +1,380 @@
+{
+  "title": "Desk Booking",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Desk Booking · Microsoft 365",
+        "description": "Microsoft Graph requires User.Read.All, GroupMember.Read.All and Place.Read.All application permissions with administrator consent.Leave the secret blank to keep its current value.",
+        "data": {
+          "tenant_id": "Tenant-ID",
+          "client_id": "Client-ID",
+          "client_secret": "Client-Secret",
+          "sync_interval": "Sync interval (minutes)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Desk Booking is already configured."
+    },
+    "error": {
+      "invalid_config": "Check tenant ID, client ID, secret and interval.",
+      "invalid_auth": "Microsoft authentication failed. Check secret and app.",
+      "insufficient_permissions": "Microsoft Graph requires User.Read.All, GroupMember.Read.All and Place.Read.All application permissions with administrator consent.",
+      "cannot_connect": "Connection failed. Try again later.",
+      "rate_limited": "Microsoft is throttling requests. Try again later.",
+      "invalid_response": "Incomplete Microsoft response; local data retained.",
+      "graph_error": "Microsoft Graph rejected the request.",
+      "delta_expired": "Microsoft synchronization cursor expired.",
+      "tenant_change_not_allowed": "Changing tenant is not supported, to protect local identities.",
+      "ambiguous_place_identity": "A Places resource has an ambiguous account mapping."
+    }
+  },
+  "config_subentries": {
+    "employee": {
+      "entry_type": "Employee",
+      "initiate_flow": {
+        "reconfigure": "Edit profile"
+      },
+      "step": {
+        "reconfigure": {
+          "title": "Edit profile",
+          "description": "Edit the local NFC assignment. Identity and active status come from Microsoft 365. Edit heights on the employee device.",
+          "data": {
+            "nfc_tag_id": "NFC-Tag-ID"
+          }
+        }
+      },
+      "error": {
+        "invalid_name": "Enter a name with 1 to 100 characters.",
+        "invalid_uuid": "Enter a valid, nonzero Microsoft ID in UUID format.",
+        "invalid_test_id": "Enter a unique test identifier with 1 to 100 characters.",
+        "invalid_tag": "Use at most 255 characters and no control characters.",
+        "duplicate_identity": "A profile for this identity already exists.",
+        "duplicate_tag": "This NFC tag is already assigned to another profile.",
+        "invalid_height": "Height must be between 50 and 140 cm.",
+        "height_order": "Sitting height must be less than standing height."
+      },
+      "abort": {
+        "reconfigure_successful": "Profile updated.",
+        "already_configured": "A profile for this identity already exists.",
+        "managed_by_m365": "Employees are imported exclusively from Microsoft 365."
+      }
+    },
+    "desk": {
+      "entry_type": "Desk",
+      "initiate_flow": {
+        "reconfigure": "Edit desk"
+      },
+      "step": {
+        "reconfigure": {
+          "title": "Set up desk",
+          "description": "Edit local settings. A display is optional for Places desks and required for check-in. Places sync preserves these settings. {detail}",
+          "data": {
+            "name": "Desk name",
+            "display_device": "Desk display",
+            "display_name": "Display label (empty = desk name)",
+            "light_1_entity": "Light 1: Entity",
+            "light_1_name": "Light 1: Display name",
+            "light_1_icon": "Light 1: Icon",
+            "light_2_entity": "Light 2: Entity",
+            "light_2_name": "Light 2: Display name",
+            "light_2_icon": "Light 2: Icon",
+            "light_3_entity": "Light 3: Entity",
+            "light_3_name": "Light 3: Display name",
+            "light_3_icon": "Light 3: Icon",
+            "light_4_entity": "Light 4: Entity",
+            "light_4_name": "Light 4: Display name",
+            "light_4_icon": "Light 4: Icon",
+            "cover_entity": "Cover / blind",
+            "cover_name": "Cover: display name",
+            "switch_entity": "Switch channel",
+            "switch_name": "Switch: display name",
+            "switch_icon": "Switch: icon"
+          }
+        }
+      },
+      "error": {
+        "invalid_desk": "Check the desk mapping. See details above."
+      }
+    },
+    "group": {
+      "entry_type": "Group"
+    },
+    "category": {
+      "entry_type": "Category"
+    }
+  },
+  "entity": {
+    "number": {
+      "sitting_height": {
+        "name": "Sitting height"
+      },
+      "standing_height": {
+        "name": "Standing height"
+      }
+    },
+    "switch": {
+      "active": {
+        "name": "Profile active"
+      }
+    },
+    "select": {
+      "selected_employee": {
+        "name": "Employee for check-in"
+      }
+    },
+    "button": {
+      "check_in": {
+        "name": "Test check-in"
+      },
+      "check_out": {
+        "name": "Check out"
+      }
+    },
+    "sensor": {
+      "occupant": {
+        "name": "Signed-in employee"
+      },
+      "desk_status": {
+        "name": "Occupancy",
+        "state": {
+          "free": "Free",
+          "applying": "Transfer / recovery pending",
+          "checked_in": "Checked in",
+          "error": "Transfer failed"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "height_order": {
+      "message": "Sitting height must be less than standing height."
+    },
+    "invalid_height": {
+      "message": "Height must be between 50 and 140 cm."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Desk Booking",
+        "menu_options": {
+          "display": "Displays",
+          "m365": "Microsoft 365",
+          "bookings": "Bookings",
+          "desk": "Edit desk",
+          "employee": "Edit employee",
+          "objects": "Objekte verwalten",
+          "mail": "E-Mail-Versand",
+          "floorplan": "Raumplan · Reservierungslink und Kennwort",
+          "manuals": "Handbücher"
+        }
+      },
+      "display": {
+        "title": "Global display settings",
+        "description": "Central defaults for all mapped displays. Individual device controls remain available.",
+        "data": {
+          "company_name": "Company name",
+          "display_brightness": "Display brightness",
+          "standby_brightness": "Standby brightness",
+          "standby_timeout": "Standby delay in seconds (0 = disabled)",
+          "standby_home": "Return to check-in page on standby"
+        }
+      },
+      "m365": {
+        "title": "Microsoft 365",
+        "description": "Microsoft Graph requires User.Read.All, GroupMember.Read.All and Place.Read.All application permissions with administrator consent.Leave the secret blank to keep its current value.",
+        "data": {
+          "tenant_id": "Tenant-ID",
+          "client_id": "Client-ID",
+          "client_secret": "Client-Secret",
+          "sync_interval": "Sync interval (minutes)"
+        }
+      },
+      "bookings": {
+        "title": "Bookings",
+        "description": "Requires Calendars.ReadBasic.All application permission with admin consent. Search horizon: 365 days.",
+        "data": {
+          "booking_interval": "Update interval (minutes)",
+          "daily_checkout_time": "Daily checkout time (HH:MM, local HA timezone)"
+        }
+      },
+      "desk": {
+        "title": "Edit desk",
+        "data": {
+          "record": "Select"
+        }
+      },
+      "desk_edit": {
+        "title": "Set up desk",
+        "description": "Edit local settings. A display is optional for Places desks and required for check-in. Places sync preserves these settings. {detail}",
+        "data": {
+          "name": "Desk name",
+          "display_device": "Desk display",
+          "display_name": "Display label (empty = desk name)",
+          "light_1_entity": "Light 1: Entity",
+          "light_1_name": "Light 1: Display name",
+          "light_1_icon": "Light 1: Icon",
+          "light_2_entity": "Light 2: Entity",
+          "light_2_name": "Light 2: Display name",
+          "light_2_icon": "Light 2: Icon",
+          "light_3_entity": "Light 3: Entity",
+          "light_3_name": "Light 3: Display name",
+          "light_3_icon": "Light 3: Icon",
+          "light_4_entity": "Light 4: Entity",
+          "light_4_name": "Light 4: Display name",
+          "light_4_icon": "Light 4: Icon",
+          "cover_entity": "Cover / blind",
+          "cover_name": "Cover: display name",
+          "switch_entity": "Switch channel",
+          "switch_name": "Switch: display name",
+          "switch_icon": "Switch: icon"
+        }
+      },
+      "employee": {
+        "title": "Edit employee",
+        "data": {
+          "record": "Select"
+        }
+      },
+      "employee_edit": {
+        "title": "Edit profile",
+        "description": "Edit the local NFC assignment. Identity and active status come from Microsoft 365. Edit heights on the employee device.",
+        "data": {
+          "nfc_tag_id": "NFC-Tag-ID"
+        }
+      },
+      "objects": {
+        "title": "Objekte verwalten",
+        "menu_options": {
+          "visible_objects": "Element ausblenden",
+          "hidden_objects": "Ausgeblendete Elemente anzeigen",
+          "delete_object": "Inaktives Objekt dauerhaft löschen"
+        }
+      },
+      "visible_objects": {
+        "title": "Element ausblenden",
+        "description": "Global in Desk-Booking-Karten und Auswahllisten ausblenden. Synchronisierung und Geräte in Home Assistant bleiben erhalten.",
+        "data": {
+          "record": "Objekt"
+        }
+      },
+      "hidden_objects": {
+        "title": "Ausgeblendete Elemente anzeigen",
+        "description": "Auswahl wieder global einblenden.",
+        "data": {
+          "record": "Objekt wieder einblenden"
+        }
+      },
+      "delete_object": {
+        "title": "Inaktives Objekt löschen",
+        "description": "Nur lokale, inaktive Objekte. Keine Änderung an Microsoft 365.",
+        "data": {
+          "record": "Objekt"
+        }
+      },
+      "delete_confirm": {
+        "title": "Dauerhaft löschen: {name}",
+        "description": "Entfernt das lokale Objekt, seine Entitäten, Planpositionen und Cache-Daten. Die Löschung der zugehörigen Recorder-Historie wird angefordert. Bestehende Backups bleiben unberührt. Nicht rückgängig zu machen. Ein später in Microsoft reaktiviertes Objekt kann neu importiert werden.",
+        "data": {
+          "confirm": "Ja, dieses inaktive Objekt und seine lokalen Daten dauerhaft löschen"
+        }
+      },
+      "mail": {
+        "title": "E-Mail-Versand",
+        "menu_options": {
+          "mail_settings": "Absender und Erinnerungen",
+          "mail_permissions": "Info: Microsoft-Berechtigungen einrichten",
+          "mail_placeholders": "Info: Alle Platzhalter",
+          "mail_preview": "Vorschau und Testmail"
+        }
+      },
+      "mail_settings": {
+        "title": "Absender und Erinnerungen",
+        "description": "Erinnerungen sind zunächst ausgeschaltet. Vor dem Aktivieren Berechtigungen einrichten und eine Testmail prüfen. Verfall-Erinnerungen gelten nur für Schreibtische (Verfall 30 Minuten nach Beginn). Passender Check-in unterdrückt beide Erinnerungen. Inhalte sind Klartext.",
+        "data": {
+          "sender": "Absenderadresse (Exchange-Online-Postfach)",
+          "dashboard_link": "Dashboard-Link (optional, leer möglich)",
+          "start_enabled": "Erinnerung vor Reservierungsbeginn aktivieren",
+          "start_minutes": "Minuten vor Beginn",
+          "start_subject": "Betreff vor Beginn",
+          "start_body": "Inhalt vor Beginn",
+          "expiry_enabled": "Erinnerung vor Verfall aktivieren",
+          "expiry_minutes": "Minuten vor Verfall (1–29)",
+          "expiry_subject": "Betreff vor Verfall",
+          "expiry_body": "Inhalt vor Verfall"
+        }
+      },
+      "mail_permissions": {
+        "title": "Microsoft-Berechtigungen für Mailversand",
+        "description": "1. [Entra Admin Center](https://entra.microsoft.com/) → App-Registrierungen → bestehende Desk-Booking-App → API-Berechtigungen → Microsoft Graph → Anwendungsberechtigungen → **Mail.Send**. Danach Administratorzustimmung erteilen. Delegierte Berechtigungen reichen für diesen Hintergrunddienst nicht.\n\n2. Der Absender muss ein tatsächliches Exchange-Online-Postfach sein. Das kann ein freigegebenes Postfach sein. Eine beliebige Aliasadresse genügt nicht.\n\n3. **Mail.Send ist grundsätzlich organisationsweit.** Ein Exchange-Administrator sollte den Zugriff auf das Absenderpostfach begrenzen: bevorzugt [Application RBAC](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac), Rolle `Application Mail.Send` mit passendem Ressourcenbereich. Bei dieser Variante darf keine zusätzliche unbeschränkte Mail.Send-Anwendungsberechtigung bestehen, da Berechtigungen addiert werden. Alternativ bestehende Application Access Policies prüfen. Zugriff auf erlaubte UND andere Postfächer testen.\n\n4. Hier Absender speichern, anschließend Vorschau und Testmail aufrufen. Bei Absenderwechsel die Postfachfreigabe entsprechend anpassen. Nur Administratoren können diese Einstellungen ändern.\n\nMicrosoft bestätigt zunächst nur die Annahme, keine Zustellung. Bei unklarem Ergebnis wird nicht automatisch erneut gesendet, um doppelte Nachrichten zu vermeiden."
+      },
+      "mail_placeholders": {
+        "title": "Alle verfügbaren Platzhalter",
+        "description": "{help}"
+      },
+      "mail_preview": {
+        "title": "Mail-Vorschau auswählen",
+        "data": {
+          "kind": "Erinnerung"
+        }
+      },
+      "mail_test": {
+        "title": "Vorschau und Testmail",
+        "description": "Absender: {sender}\n\n**Betreff:** {subject}\n\n{body}\n\nDie Vorschau verwendet Beispieldaten. Erst mit aktiviertem Schalter und Absenden wird eine echte Testmail versendet.",
+        "data": {
+          "recipient": "Testempfänger",
+          "send": "Diese Testmail jetzt versenden"
+        }
+      },
+      "mail_result": {
+        "title": "Ergebnis des Testversands",
+        "description": "{result}"
+      },
+      "floorplan": {
+        "title": "Raumplan · zentrale Einstellungen",
+        "description": "Der Reservierungslink öffnet sich in einem neuen Fenster. Kennwortschutz: {password_status}. Ein leeres Kennwortfeld behält das bisherige Kennwort. Ohne hinterlegtes Kennwort entfällt die Abfrage. Bearbeiten bleibt auf Administratoren beschränkt.",
+        "data": {
+          "booking_url": "Reservierungs-URL (HTTPS)",
+          "password": "Neues Kennwort für Plan bearbeiten und + Plan",
+          "clear_password": "Kennwort entfernen"
+        }
+      },
+      "manuals": {
+        "title": "Desk Booking · Handbücher",
+        "description": "Die Handbücher gehören zur installierten Integrationsversion und öffnen separat im Browser.\n\n{links}\n\nBeide Handbücher bieten Inhaltsverzeichnis, Suche und Drucken / als PDF speichern.\n\nZurück mit OK. Es werden keine Einstellungen geändert."
+      }
+    },
+    "error": {
+      "invalid_company_name": "Use at most 60 characters and no control characters.",
+      "invalid_display_setting": "Value outside the permitted range.",
+      "invalid_config": "Check tenant ID, client ID, secret and interval.",
+      "invalid_auth": "Microsoft authentication failed. Check secret and app.",
+      "insufficient_permissions": "Microsoft Graph requires User.Read.All, GroupMember.Read.All and Place.Read.All application permissions with administrator consent.",
+      "cannot_connect": "Connection failed. Try again later.",
+      "rate_limited": "Microsoft is throttling requests. Try again later.",
+      "invalid_response": "Incomplete Microsoft response; local data retained.",
+      "graph_error": "Microsoft Graph rejected the request.",
+      "delta_expired": "Microsoft synchronization cursor expired.",
+      "tenant_change_not_allowed": "Changing tenant is not supported, to protect local identities.",
+      "ambiguous_place_identity": "A Places resource has an ambiguous account mapping.",
+      "invalid_desk": "Check the desk mapping. See details above.",
+      "invalid_name": "Enter a name with 1 to 100 characters.",
+      "invalid_uuid": "Enter a valid, nonzero Microsoft ID in UUID format.",
+      "invalid_test_id": "Enter a unique test identifier with 1 to 100 characters.",
+      "invalid_tag": "Use at most 255 characters and no control characters.",
+      "duplicate_identity": "A profile for this identity already exists.",
+      "duplicate_tag": "This NFC tag is already assigned to another profile.",
+      "invalid_height": "Height must be between 50 and 140 cm.",
+      "height_order": "Sitting height must be less than standing height.",
+      "invalid_booking_interval": "Choose 1 to 1440 whole minutes.",
+      "invalid_checkout_time": "Enter a valid time in HH:MM format.",
+      "delete_failed": "Löschen fehlgeschlagen. Aktivstatus, Check-in und Speicher prüfen.",
+      "invalid_mail_settings": "Adresse, Vorlauf oder Platzhalter ungültig. Bitte die Info-Dialoge beachten.",
+      "invalid_floorplan_settings": "Bitte eine gültige HTTPS-Adresse und ein Kennwort mit höchstens 256 Zeichen eingeben."
+    },
+    "abort": {
+      "no_synced_records": "No matching records synchronized yet."
+    }
+  }
+}

@@ -1,26 +1,30 @@
-name: Documentation consistency
+name: Desk Booking validation
 on:
   pull_request:
   push:
     branches: [main]
+permissions:
+  contents: read
 jobs:
-  documentation:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m unittest discover -s desk-booking/tests -q
+      - run: node --test desk-booking/tests/*.test.mjs
+      - run: python desk-booking/documentation.py --check
+      - run: python desk-booking/package_m365.py
       - name: Verify mandatory project files
         run: |
           test -s AGENTS.md
           test -s REQUIREMENTS.md
           test -s STATUS.md
-          test -s README.md
-      - name: Check documentation accompanies integration changes
-        if: github.event_name == 'pull_request'
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: |
-          git fetch origin "$BASE_REF" --depth=1
-          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
-          if printf '%s\n' "$changed" | grep -q '^custom_components/'; then
-            printf '%s\n' "$changed" | grep -qx 'STATUS.md' || { echo 'Update STATUS.md when integration code changes'; exit 1; }
-          fi
+          test -s docs/USER_MANUAL.md
+          test -s docs/ADMIN_MANUAL.md

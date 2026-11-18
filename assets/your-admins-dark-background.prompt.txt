@@ -1,0 +1,8 @@
+Use case: stylized-concept.
+Asset type: finished flat background bitmap for a small circular 480x480 ESPHome touchscreen, square 1:1 source.
+Create an elegant dark-mode background inspired by the visual style of your-admins.de: deep petrol, turquoise-to-mint gradients and crisp abstract triangular facets. This is a background asset only, not a device mockup or UI screenshot.
+Composition: design for an inscribed circle in the square canvas. Entire central 65 percent diameter should be extremely dark, near-solid charcoal petrol (#08171C), uncluttered and low contrast, so white text and a live circular dimmer control can be overlaid. Place a small restrained flowing cluster of translucent angular triangular facets along the outer lower-left perimeter and a complementary very soft teal/mint light wash at the upper-right perimeter. Facets should feel premium and architectural, not crystalline fantasy. Background remains full bleed square; nothing essential in corners. Smooth subtle gradients, crisp clean surfaces, restrained luminous edges, professional friendly IT-services identity. Color palette charcoal petrol, muted deep teal #075363, turquoise #18B9B6, very sparing mint #76F4D0. About 85 percent dark area. Keep outer edge subdued enough to support a superimposed live arc control.
+No text, no lettering, no logo, no numbers, no gauges, no circles or ring borders, no buttons, no icons, no stars, no circuit traces, no hardware, no mockup frame, no watermark. Output a single polished background image.
+
+Generated with built-in Imagegen. Source inspiration: https://www.your-admins.de/
+Square source asset for later ESPHome resize to 480x480. Not yet installed on display.

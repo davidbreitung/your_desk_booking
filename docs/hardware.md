@@ -1,3 +1,9 @@
+# Vorhandene Firmware (Import 2026-11-18)
+
+Die redigierte Referenz für ein ESP32-S3-Display mit 16 MB Flash, Touch und Drehrad liegt in `schreibtisch-display-01.checkedin.redacted.yaml`, ergänzt um Partitionsdatei, Ressourcen-Header und Hintergrundassets. Secret-Referenzen, Beispieladresse und HA-Entitäten vor Verwendung anpassen. Historischer Build/OTA-Erfolg gilt für das ursprüngliche Gerät, nicht für neue Hardware. NFC/DESFire, Türcontroller, Gehäuse, Diffusor und Beleuchtungsentwicklung bleiben die nachstehenden offenen Konzepte.
+
+---
+
 # Hardwarekonzept (Planungsstand)
 
 - Rundes, etwa 2-Zoll-ESPHome-kompatibles Schreibtischdisplay; genaue Herstellerbezeichnung und Firmwarekonfiguration müssen ergänzt werden.
