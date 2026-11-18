@@ -92,13 +92,20 @@ def render(name, version, reviewed):
     return '<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escape(title)+'</title><style>'+STYLE+'</style><header><div class="brand">DESK BOOKING · HANDBÜCHER</div><h1>'+escape(title)+'</h1><p>Version '+escape(version)+' · Redaktionell geprüft am '+escape(reviewed[:10])+'</p><div class="actions"><a href="'+other+'.html">'+('Administratorhandbuch' if other == 'administrator' else 'Benutzerhandbuch')+'</a><a href="'+name+'.md">Markdown-Quelle</a><button id="print" type="button">Drucken / als PDF speichern</button></div></header><div class="layout"><aside><label for="search">In diesem Handbuch suchen</label><input id="search" type="search" placeholder="Suchbegriff"><div id="found" aria-live="polite"></div><nav aria-label="Inhaltsverzeichnis">'+toc+'</nav></aside><main>'+content+'</main></div><footer>Mit der installierten Desk-Booking-Version ausgelieferte Dokumentation. Individuelle Einstellungen können von Standardwerten abweichen.</footer><script>'+SCRIPT+'</script></html>\n'
 
 
+def content_digest(path):
+    data = path.read_bytes()
+    if path.suffix in {'.py', '.json', '.js', '.yaml', '.yml', '.md', '.html'}:
+        data = data.replace(b'\r\n', b'\n')
+    return sha256(data).hexdigest()
+
+
 def sources():
     result = {}
     for path in COMPONENT.rglob('*'):
         if path.is_file() and '__pycache__' not in path.parts and DOCS not in path.parents:
-            result[path.relative_to(ROOT).as_posix()] = sha256(path.read_bytes()).hexdigest()
+            result[path.relative_to(ROOT).as_posix()] = content_digest(path)
     for path in [ROOT/'package_m365.py', ROOT/'documentation.py', ROOT.parent/'AGENTS.md', ROOT.parent/'schreibtisch-display-01.checkedin.redacted.yaml']:
-        result[path.relative_to(ROOT.parent).as_posix()] = sha256(path.read_bytes()).hexdigest()
+        result[path.relative_to(ROOT.parent).as_posix()] = content_digest(path)
     return result
 
 
@@ -108,13 +115,13 @@ def check():
     if manifest['version'] != version or manifest['sources'] != sources():
         raise SystemExit('Handbuchprüfung fehlt: Code/Version geändert. Handbücher redaktionell prüfen und documentation.py --review ausführen.')
     for name, digest in manifest['manuals'].items():
-        if sha256((DOCS/name).read_bytes()).hexdigest() != digest:
+        if content_digest(DOCS/name) != digest:
             raise SystemExit('Handbücher geändert: HTML-Ausgaben nach redaktioneller Prüfung mit documentation.py --review erzeugen.')
     for name in MANUALS:
         if (DOCS/(name+'.html')).read_text(encoding='utf-8') != render(name, version, manifest['reviewed_at']):
             raise SystemExit('Handbuch-HTML entspricht nicht der Markdown-Quelle.')
     for name, mirror in [('benutzer','USER_MANUAL.md'),('administrator','ADMIN_MANUAL.md')]:
-        if (ROOT.parent/'docs'/mirror).read_bytes() != (DOCS/(name+'.md')).read_bytes():
+        if (ROOT.parent/'docs'/mirror).read_text(encoding='utf-8') != (DOCS/(name+'.md')).read_text(encoding='utf-8'):
             raise SystemExit('Handbuch-Spiegel veraltet: documentation.py --review erforderlich.')
     print('HANDBUECHER_OK', version)
 
@@ -127,7 +134,7 @@ def review():
     (ROOT.parent/'docs').mkdir(exist_ok=True)
     for name, mirror in [('benutzer','USER_MANUAL.md'),('administrator','ADMIN_MANUAL.md')]:
         (ROOT.parent/'docs'/mirror).write_bytes((DOCS/(name+'.md')).read_bytes())
-    manuals = {p.name:sha256(p.read_bytes()).hexdigest() for p in DOCS.iterdir() if p.suffix in ('.md','.html')}
+    manuals = {p.name:content_digest(p) for p in DOCS.iterdir() if p.suffix in ('.md','.html')}
     (DOCS/'review.json').write_text(json.dumps({'version':version,'reviewed_at':reviewed,'sources':sources(),'manuals':manuals},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     check()
 

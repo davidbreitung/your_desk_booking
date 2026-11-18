@@ -13,6 +13,16 @@ docs=importlib.util.module_from_spec(spec);spec.loader.exec_module(docs)
 
 
 class DocumentationTests(unittest.TestCase):
+    def test_text_digest_accepts_platform_line_endings_but_detects_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'source.py'
+            path.write_bytes(b'first\nsecond\n')
+            expected = docs.content_digest(path)
+            path.write_bytes(b'first\r\nsecond\r\n')
+            self.assertEqual(expected, docs.content_digest(path))
+            path.write_bytes(b'first\r\nchanged\r\n')
+            self.assertNotEqual(expected, docs.content_digest(path))
+
     def test_review_matches_actual_sources_and_outputs(self):
         docs.check()
 

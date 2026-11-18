@@ -309,6 +309,8 @@ Die Markdown-Dateien sind die redaktionellen Quellen; HTML-Ausgaben werden darau
 
 Die Paketierung verweigert ungeprüfte Änderungen oder veraltete Handbuchausgaben. Dieser technische Schutz erkennt Abweichungen, kann aber die inhaltliche Richtigkeit nicht selbst garantieren. Er ersetzt keine redaktionelle Prüfung. Die Projektanweisung AGENTS.md verpflichtet künftige Arbeiten auf diesem Projekt zur gemeinsamen Pflege.
 
+Die Prüfsummen für Textdateien behandeln Windows- und Linux-Zeilenumbrüche gleich. Inhaltliche Änderungen erfordern weiterhin eine erneute redaktionelle Freigabe; Binärdateien werden unverändert geprüft.
+
 
 ## Öffentliche Repository-Fassung
 

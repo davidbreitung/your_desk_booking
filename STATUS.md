@@ -18,7 +18,7 @@ Nur eine bereinigte Referenzfassung wird veröffentlicht. Originaldateien und Pr
 
 ## Tests dieses Imports
 
-- 169 Python-Tests im neuen Arbeitsordner erfolgreich. Ein erster Lauf scheiterte an fehlenden Testbibliotheken; nach lokaler Installation von requirements-dev.txt war der vollständige Lauf erfolgreich.
+- 170 Python-Tests im neuen Arbeitsordner erfolgreich, einschließlich einer zusätzlichen Prüfung zur Zeilenumbruch-Kompatibilität. Ein erster Lauf scheiterte an fehlenden Testbibliotheken; nach lokaler Installation von requirements-dev.txt war der vollständige Lauf erfolgreich. Der erste GitHub-Lauf fand eine Windows-/Linux-Abweichung in den Handbuch-Prüfsummen; Textprüfsummen wurden daraufhin unabhängig vom Zeilenumbruch gemacht.
 - 13 JavaScript-Tests erfolgreich (Raumplan, Kartenbedienung und Anwesenheit).
 - Dokumentationsprüfung erfolgreich; HTML-Ausgaben und Handbuchspiegel unter docs/ entsprechen den redaktionellen Quellen.
 - Paketierung erfolgreich: 48 Integrationsdateien; öffentliches Referenzpaket mit neutralen Vorgaben. Kein erneuter HA-/Graph-/Hardwaretest.
